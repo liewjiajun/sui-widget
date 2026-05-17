@@ -1,0 +1,32 @@
+import Foundation
+import SwiftData
+
+/// A Sui wallet the user is tracking. Not yet registered in SwiftDataStack.schema (Phase 1).
+@Model
+public final class Wallet {
+    @Attribute(.unique) public var id: UUID
+    public var address: String          // 0x-prefixed, 32 bytes
+    public var label: String?
+    public var suiNSName: String?
+    public var addedAt: Date
+    public var isPrimary: Bool
+    public var orderIndex: Int
+
+    public init(
+        id: UUID = UUID(),
+        address: String,
+        label: String? = nil,
+        suiNSName: String? = nil,
+        addedAt: Date = Date(),
+        isPrimary: Bool = false,
+        orderIndex: Int = 0
+    ) {
+        self.id = id
+        self.address = address
+        self.label = label
+        self.suiNSName = suiNSName
+        self.addedAt = addedAt
+        self.isPrimary = isPrimary
+        self.orderIndex = orderIndex
+    }
+}
