@@ -29,4 +29,19 @@ struct AppGroupStoreTests {
         let store = AppGroupStore(containerURL: dir)
         #expect(try store.readHandshake() == nil)
     }
+
+    @Test("second write overwrites the first")
+    func secondWriteOverwritesFirst() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let store = AppGroupStore(containerURL: dir)
+        try store.writeHandshake("first-value")
+        try store.writeHandshake("second-value")
+
+        let read = try store.readHandshake()
+        #expect(read?.value == "second-value")
+    }
 }

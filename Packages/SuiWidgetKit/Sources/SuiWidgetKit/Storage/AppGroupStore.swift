@@ -44,10 +44,17 @@ public struct AppGroupStore {
     }
 
     /// Reads the most recent handshake payload, or `nil` if none has been written.
+    ///
+    /// Uses a single read attempt rather than a `fileExists` pre-check, avoiding the
+    /// TOCTOU race where the file could disappear between the existence check and the read.
+    /// `DecodingError` (corrupt file) and other I/O errors still propagate as `throws`.
     public func readHandshake() throws -> HandshakePayload? {
-        guard FileManager.default.fileExists(atPath: handshakeURL.path) else { return nil }
-        let data = try Data(contentsOf: handshakeURL)
-        return try JSONDecoder().decode(HandshakePayload.self, from: data)
+        do {
+            let data = try Data(contentsOf: handshakeURL)
+            return try JSONDecoder().decode(HandshakePayload.self, from: data)
+        } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
+            return nil
+        }
     }
 }
 
