@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  package-tests:
+    name: SuiWidgetKit unit tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print Swift version
+        run: swift --version
+      - name: Run swift test
+        run: swift test --package-path Packages/SuiWidgetKit
+
+  ios-build:
+    name: iOS app + widget build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print Xcode version
+        run: xcodebuild -version
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build app + widget
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project SuiWidget.xcodeproj \
+            -scheme SuiWidget \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
