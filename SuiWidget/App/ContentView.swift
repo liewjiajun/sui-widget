@@ -46,9 +46,10 @@ struct ContentView: View {
             let store = try AppGroupStore()
             let timestamp = ISO8601DateFormatter().string(from: Date())
             let value = "hello-\(timestamp)"
+            let payload = HandshakePayload(value: value, writtenAt: Date())
             try store.writeHandshake(value)
-            lastWritten = try store.readHandshake()
-            lastRead = lastWritten
+            lastWritten = payload
+            lastRead = try store.readHandshake()
             WidgetCenter.shared.reloadAllTimelines()
             errorMessage = nil
         } catch {
