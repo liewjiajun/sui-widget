@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Aggregate per-wallet portfolio snapshot. Not yet registered in SwiftDataStack.schema (Phase 1).
+/// Aggregate per-wallet portfolio snapshot.
 @Model
 public final class CachedPortfolio {
     @Attribute(.unique) public var walletId: UUID
@@ -9,9 +9,9 @@ public final class CachedPortfolio {
     public var change24hUSD: Decimal
     public var change24hPercent: Double
     public var snapshotAt: Date
-    @Relationship public var tokens: [CachedTokenHolding]
-    @Relationship public var stakes: [CachedStakePosition]
-    @Relationship public var nfts: [CachedNFTItem]
+    @Relationship(deleteRule: .cascade) public var tokens: [CachedTokenHolding]
+    @Relationship(deleteRule: .cascade) public var stakes: [CachedStakePosition]
+    @Relationship(deleteRule: .cascade) public var nfts: [CachedNFTItem]
 
     public init(
         walletId: UUID,
@@ -36,6 +36,7 @@ public final class CachedPortfolio {
 
 @Model
 public final class CachedTokenHolding {
+    @Attribute(.unique) public var id: UUID
     public var coinType: String
     public var symbol: String
     public var name: String
@@ -47,6 +48,7 @@ public final class CachedTokenHolding {
     public var isTracked: Bool
 
     public init(
+        id: UUID = UUID(),
         coinType: String,
         symbol: String,
         name: String,
@@ -57,6 +59,7 @@ public final class CachedTokenHolding {
         iconURL: String? = nil,
         isTracked: Bool
     ) {
+        self.id = id
         self.coinType = coinType
         self.symbol = symbol
         self.name = name

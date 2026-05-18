@@ -212,9 +212,9 @@ final class Pet {
 final class Quest {
     @Attribute(.unique) var questId: String
     var title: String
-    var description: String
+    var summary: String                 // renamed from description (avoids CustomStringConvertible shadow)
     var xpReward: Int
-    var status: String           // "available", "in_progress", "completed"
+    var status: QuestStatus             // String-backed enum
     var expiresAt: Date?
 }
 ```

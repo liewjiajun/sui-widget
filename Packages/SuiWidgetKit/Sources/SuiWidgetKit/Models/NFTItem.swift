@@ -3,7 +3,7 @@ import SwiftData
 
 @Model
 public final class CachedNFTItem {
-    public var objectId: String
+    @Attribute(.unique) public var objectId: String
     public var collectionName: String?
     public var name: String
     public var imageURL: String

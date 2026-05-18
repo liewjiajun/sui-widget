@@ -7,7 +7,7 @@ public final class CachedNewsItem {
     public var title: String
     public var url: String
     public var publishedAt: Date
-    public var source: String                    // "blog", "github_release"
+    public var source: NewsSource
     public var summary: String?
 
     public init(
@@ -15,7 +15,7 @@ public final class CachedNewsItem {
         title: String,
         url: String,
         publishedAt: Date,
-        source: String,
+        source: NewsSource,
         summary: String? = nil
     ) {
         self.id = id

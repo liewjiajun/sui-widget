@@ -9,7 +9,7 @@ public final class Quest {
     public var title: String
     public var summary: String
     public var xpReward: Int
-    public var status: String           // "available", "in_progress", "completed"
+    public var status: QuestStatus
     public var expiresAt: Date?
 
     public init(
@@ -17,7 +17,7 @@ public final class Quest {
         title: String,
         summary: String,
         xpReward: Int,
-        status: String = "available",
+        status: QuestStatus = .available,
         expiresAt: Date? = nil
     ) {
         self.questId = questId
