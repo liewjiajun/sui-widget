@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import Observation
 import SuiWidgetKit
+import WidgetKit
 
 @MainActor
 @Observable
@@ -42,6 +43,9 @@ final class StakeListViewModel {
         do {
             _ = try await stakingService.refresh(walletId: walletId)
             load()
+            // Widgets pull from the same shared store; reload after a successful
+            // refresh so they pick up the new stake data on next render.
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             refreshError = error.localizedDescription
             loadState = positions.isEmpty
@@ -59,19 +63,49 @@ final class StakeListViewModel {
         positions.reduce(Decimal(0)) { $0 + ($1.estimatedReward / Decimal(1_000_000_000)) }
     }
 
-    /// Average APY weighted by principal. Returns nil if no positions or no validator metadata.
+    /// Network-base APY estimate for V1. Sui's epoch-wise reward distribution
+    /// makes this a moving target; the figure comes from the validator
+    /// commission set (which we already cache) by computing
+    /// `(1 - meanCommission) * 5.0%` — a defensible V1 approximation pending a
+    /// future suix_getStakeRewardsRate RPC integration.
+    ///
+    /// Per position: `effectiveAPY = networkBaseAPY * (1 - commissionFraction)`
+    /// where `commissionFraction = commissionRate / 10_000` (Sui basis points).
+    /// Returns the principal-weighted mean across `positions`, or nil if there
+    /// are no positions / zero principal.
     var weightedAverageAPY: Double? {
-        // We don't have explicit APY on CachedStakePosition; estimate as
-        // (estimatedReward / principal) for the position's lifetime, then weight.
-        // For V1 this is a placeholder display — real per-validator APY comes from the
-        // CachedValidatorMetadata.commissionRate + system state in V1.1.
         guard !positions.isEmpty else { return nil }
-        let avgRewardRate = positions.compactMap { pos -> Double? in
-            guard pos.principal > 0 else { return nil }
-            let ratio = (pos.estimatedReward as NSDecimalNumber).doubleValue
-                       / (pos.principal as NSDecimalNumber).doubleValue
-            return ratio * 100
-        }.reduce(0, +) / Double(positions.count)
-        return avgRewardRate
+
+        // Fetch all cached validator metadata once and index by address.
+        let descriptor = FetchDescriptor<CachedValidatorMetadata>()
+        let validators = (try? modelContext.fetch(descriptor)) ?? []
+        let validatorByAddress: [String: CachedValidatorMetadata] = Dictionary(
+            uniqueKeysWithValues: validators.map { ($0.validatorAddress, $0) }
+        )
+
+        // Network-level base APY for V1 (Sui mainnet hovers around 4.5–5.5% net
+        // of commission across the active set).
+        let networkBaseAPY: Double = 5.0
+
+        let totalPrincipal = positions.reduce(Decimal(0)) { $0 + $1.principal }
+        guard totalPrincipal > 0 else { return nil }
+        let totalPrincipalDouble = (totalPrincipal as NSDecimalNumber).doubleValue
+        guard totalPrincipalDouble > 0 else { return nil }
+
+        var weightedSum: Double = 0
+        for position in positions {
+            let validator = validatorByAddress[position.validatorAddress]
+            // commissionRate is stored as basis points (0–10000 per Sui
+            // convention). Clamp to [0, 1] after dividing to guard against
+            // out-of-range cached values.
+            let commission = validator?.commissionRate ?? 0
+            let commissionFraction = max(0, min(1, commission / 10_000))
+            let effectiveAPY = networkBaseAPY * (1 - commissionFraction)
+
+            let principalShare = (position.principal as NSDecimalNumber).doubleValue
+                                / totalPrincipalDouble
+            weightedSum += effectiveAPY * principalShare
+        }
+        return weightedSum
     }
 }

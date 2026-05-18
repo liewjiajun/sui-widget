@@ -31,16 +31,19 @@ public struct PortfolioService {
         // 1. On-chain balances.
         let balances = try await sui.getAllBalances(owner: owner)
 
-        // 2. Coin-type → CoinGecko-id mapping (24h TTL cache).
+        // 2. Coin-type → CoinGecko-id mapping (24h TTL cache). Both sides are
+        //    canonicalized so short-form RPC coin types (e.g. `0x2::sui::SUI`)
+        //    match long-form CoinGecko entries.
         let mappings = try await coinGecko.refreshCoinList(force: false)
-        let mappingByCoinType: [String: CoinTypeMapping] = Dictionary(
-            uniqueKeysWithValues: mappings.map { ($0.coinType, $0) }
+        let canonicalLookup: [String: CoinTypeMapping] = Dictionary(
+            uniqueKeysWithValues: mappings.map { (CoinTypeCanonicalizer.canonicalize($0.coinType), $0) }
         )
 
         // 3. Tracked CoinGecko ids.
         var trackedIds: [String] = []
         for balance in balances {
-            if let mapping = mappingByCoinType[balance.coinType] {
+            let canonical = CoinTypeCanonicalizer.canonicalize(balance.coinType)
+            if let mapping = canonicalLookup[canonical] {
                 trackedIds.append(mapping.coingeckoId)
             }
         }
@@ -62,12 +65,19 @@ public struct PortfolioService {
         var holdings: [CachedTokenHolding] = []
 
         for balance in balances {
-            let decimals = decimalsFor(coinType: balance.coinType)
-            let unit = pow(10.0, Double(decimals))
-            let amountDouble = NSDecimalNumber(decimal: balance.totalBalance).doubleValue / unit
-            let amount = Decimal(amountDouble)
+            let canonicalCoinType = CoinTypeCanonicalizer.canonicalize(balance.coinType)
 
-            if let mapping = mappingByCoinType[balance.coinType] {
+            if let mapping = canonicalLookup[canonicalCoinType] {
+                // Tracked token. Look up cached decimals (lazily populated via
+                // suix_getCoinMetadata on first miss).
+                let decimals = await ensureDecimals(
+                    canonical: canonicalCoinType,
+                    rawCoinType: balance.coinType
+                )
+                let unit = pow(10.0, Double(decimals))
+                let amountDouble = NSDecimalNumber(decimal: balance.totalBalance).doubleValue / unit
+                let amount = Decimal(amountDouble)
+
                 let market = priceById[mapping.coingeckoId]
                 let priceUSD = market?.currentPrice
                 let change24h = market?.priceChangePercentage24h
@@ -99,15 +109,27 @@ public struct PortfolioService {
                     isTracked: true
                 ))
             } else {
+                // Untracked token. Try to surface real symbol/name/decimals
+                // via on-chain Move metadata; fall back to a coin-type
+                // short-symbol when the RPC fails.
+                let metadata = try? await sui.getCoinMetadata(coinType: balance.coinType)
+                let decimals = metadata?.decimals ?? 9
+                let unit = pow(10.0, Double(decimals))
+                let amountDouble = NSDecimalNumber(decimal: balance.totalBalance).doubleValue / unit
+                let amount = Decimal(amountDouble)
+
+                let symbol = metadata?.symbol ?? shortSymbol(from: balance.coinType)
+                let name = metadata?.name ?? balance.coinType
+
                 holdings.append(CachedTokenHolding(
                     coinType: balance.coinType,
-                    symbol: shortSymbol(from: balance.coinType),
-                    name: balance.coinType,
+                    symbol: symbol,
+                    name: name,
                     balance: amount,
                     decimals: decimals,
                     priceUSD: nil,
                     priceChange24h: nil,
-                    iconURL: nil,
+                    iconURL: metadata?.iconUrl,
                     isTracked: false
                 ))
             }
@@ -175,14 +197,35 @@ public struct PortfolioService {
         return try modelContext.fetch(descriptor).first
     }
 
-    private func decimalsFor(coinType: String) -> Int {
-        // SUI and most Sui tokens use 9 decimals. Untracked coins may vary; a
-        // Phase 2 refinement is to call suix_getCoinMetadata once per coin type.
-        return 9
+    /// Returns decimals for a tracked coin type. Checks the cached
+    /// `CachedCoinListEntry.decimals` first; on a miss (or default-9 row that
+    /// pre-dates this lookup), fetches `suix_getCoinMetadata` once and persists
+    /// the result. Returns 9 (SUI default) if both paths fail.
+    private func ensureDecimals(canonical: String, rawCoinType: String) async -> Int {
+        let descriptor = FetchDescriptor<CachedCoinListEntry>(
+            predicate: #Predicate { $0.coinType == canonical }
+        )
+        let row = try? modelContext.fetch(descriptor).first
+        // First call after migration: every existing row has decimals == 9 by
+        // default, so we still want to confirm via metadata. We treat any row
+        // we've already enriched (decimals != 9) as authoritative; for the
+        // remainder we fall through to a one-shot metadata fetch.
+        if let row, row.decimals != 9 {
+            return row.decimals
+        }
+        if let metadata = try? await sui.getCoinMetadata(coinType: rawCoinType) {
+            if let row {
+                row.decimals = metadata.decimals
+                try? modelContext.save()
+            }
+            return metadata.decimals
+        }
+        return row?.decimals ?? 9
     }
 
     private func shortSymbol(from coinType: String) -> String {
-        // "0x2::sui::SUI" → "SUI"
+        // "0x2::sui::SUI" → "SUI". Fallback used only when getCoinMetadata fails
+        // for an untracked coin.
         let parts = coinType.split(separator: ":")
         return parts.last.map(String.init)?.uppercased() ?? "?"
     }

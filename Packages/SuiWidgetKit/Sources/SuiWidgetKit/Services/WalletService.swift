@@ -16,7 +16,11 @@ public struct WalletService {
     /// Adds a wallet. Accepts `0x...`, `name.sui`, or `@name`.
     /// Resolves the name through SuiNS. The first wallet inserted is marked primary.
     @discardableResult
-    public func add(addressOrName input: String, label: String? = nil) async throws -> Wallet {
+    public func add(
+        addressOrName input: String,
+        label: String? = nil,
+        includeInWidget: Bool = true
+    ) async throws -> Wallet {
         let address = try await suiNS.resolve(input)
         let existing = try list()
         let isFirst = existing.isEmpty
@@ -31,7 +35,8 @@ public struct WalletService {
             label: label,
             suiNSName: suiNSName,
             isPrimary: isFirst,
-            orderIndex: existing.count
+            orderIndex: existing.count,
+            includeInWidget: includeInWidget
         )
         modelContext.insert(wallet)
         try modelContext.save()

@@ -11,6 +11,10 @@ public final class Wallet {
     public var addedAt: Date
     public var isPrimary: Bool
     public var orderIndex: Int
+    /// When false, this wallet is excluded from widget aggregates and the
+    /// widget timeline provider's primary-pick fallback. Defaults to true so
+    /// existing rows survive a lightweight schema migration.
+    public var includeInWidget: Bool
 
     public init(
         id: UUID = UUID(),
@@ -19,7 +23,8 @@ public final class Wallet {
         suiNSName: String? = nil,
         addedAt: Date = Date(),
         isPrimary: Bool = false,
-        orderIndex: Int = 0
+        orderIndex: Int = 0,
+        includeInWidget: Bool = true
     ) {
         self.id = id
         self.address = address
@@ -28,5 +33,6 @@ public final class Wallet {
         self.addedAt = addedAt
         self.isPrimary = isPrimary
         self.orderIndex = orderIndex
+        self.includeInWidget = includeInWidget
     }
 }

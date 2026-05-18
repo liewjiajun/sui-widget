@@ -64,10 +64,17 @@ public struct CoinGeckoClient {
             throw CoinGeckoError.decodingFailed(detail: String(describing: error))
         }
 
-        // Filter to Sui-platform entries.
+        // Filter to Sui-platform entries. Canonicalize coinType so the persisted
+        // mapping always uses the long-form (0x0000…) representation that matches
+        // what other on-chain sources emit after canonicalization.
         let mappings: [CoinTypeMapping] = allEntries.compactMap { entry in
             guard let coinType = entry.suiCoinType else { return nil }
-            return CoinTypeMapping(coinType: coinType, coingeckoId: entry.id, symbol: entry.symbol, name: entry.name)
+            return CoinTypeMapping(
+                coinType: CoinTypeCanonicalizer.canonicalize(coinType),
+                coingeckoId: entry.id,
+                symbol: entry.symbol,
+                name: entry.name
+            )
         }
 
         // Replace persisted rows.

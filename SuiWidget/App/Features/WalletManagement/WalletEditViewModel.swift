@@ -20,7 +20,7 @@ final class WalletEditViewModel {
         self.walletId = wallet.id
         self.label = wallet.label ?? ""
         self.isPrimary = wallet.isPrimary
-        self.includeInWidget = true  // For V1 there's no per-wallet widget include flag on the model; assumed true.
+        self.includeInWidget = wallet.includeInWidget
         self.modelContext = modelContext
         let rpc = SuiRPCClient()
         let suiNS = SuiNSResolver(rpc: rpc, modelContext: modelContext)
@@ -35,6 +35,7 @@ final class WalletEditViewModel {
                 return
             }
             wallet.label = label.isEmpty ? nil : label
+            wallet.includeInWidget = includeInWidget
             try modelContext.save()
             if isPrimary {
                 try walletService.setPrimary(id: walletId)

@@ -31,8 +31,9 @@ public struct SuiTimelineProvider: AppIntentTimelineProvider {
         do {
             let container = try SwiftDataStack.makeContainer()
             let context = ModelContext(container)
-            let wallets = try context.fetch(FetchDescriptor<Wallet>())
-            guard let wallet = wallets.first(where: { $0.isPrimary }) ?? wallets.first else {
+            let allWallets = try context.fetch(FetchDescriptor<Wallet>())
+            let eligibleWallets = allWallets.filter(\.includeInWidget)
+            guard let wallet = eligibleWallets.first(where: { $0.isPrimary }) ?? eligibleWallets.first else {
                 return SuiWidgetEntry(configuration: configuration)
             }
 

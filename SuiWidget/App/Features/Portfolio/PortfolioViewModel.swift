@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import Observation
 import SuiWidgetKit
+import WidgetKit
 
 @MainActor
 @Observable
@@ -107,6 +108,9 @@ final class PortfolioViewModel {
             _ = await stakingRefresh
             loadCachedPortfolio()
             loadCachedStakes()
+            // Tell the widget extension the shared SwiftData store has fresh
+            // data so its next timeline render reflects the user-visible refresh.
+            WidgetCenter.shared.reloadAllTimelines()
             loadState = .loaded
         } catch {
             // Show last cached + error pill.

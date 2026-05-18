@@ -98,11 +98,11 @@ extension MockURLProtocolSuite {
 
             let portfolio = try await service.refresh(walletId: walletId)
             #expect(!portfolio.tokens.isEmpty)
-            // 0x2::sui::SUI is in the balances fixture in short form; the coin
-            // list fixture's SUI entry uses the long-form address. Since they
-            // don't match by string equality, SUI ends up untracked here — a
-            // deliberate Phase 1 limitation. We assert that at least one tracked
-            // token exists (e.g., USDC) and at least one untracked.
+            // CoinTypeCanonicalizer reconciles the balances fixture's short
+            // form (`0x2::sui::SUI`) with the coin list fixture's long form,
+            // so SUI is now tracked. The balances fixture also contains many
+            // coins not in the coin list (GMB, TUSK, REX, …) so we still
+            // expect both tracked and untracked entries.
             #expect(portfolio.tokens.contains(where: { $0.isTracked }))
             #expect(portfolio.tokens.contains(where: { !$0.isTracked }))
         }
