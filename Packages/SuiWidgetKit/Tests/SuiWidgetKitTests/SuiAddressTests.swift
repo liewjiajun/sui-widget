@@ -29,6 +29,24 @@ struct SuiAddressTests {
         #expect(SuiAddress(rawValue: raw) == nil)
     }
 
+    @Test func rejects_uppercase_0X_prefix() {
+        let raw = "0X" + String(repeating: "a", count: 64)
+        #expect(SuiAddress(rawValue: raw) == nil)
+    }
+
+    @Test func rejects_empty_string() {
+        #expect(SuiAddress(rawValue: "") == nil)
+    }
+
+    @Test func rejects_just_prefix() {
+        #expect(SuiAddress(rawValue: "0x") == nil)
+    }
+
+    @Test func accepts_all_zeros() {
+        let raw = "0x" + String(repeating: "0", count: 64)
+        #expect(SuiAddress(rawValue: raw)?.rawValue == raw)
+    }
+
     @Test func is_codable_round_trip() throws {
         let raw = "0x" + String(repeating: "a", count: 64)
         let address = SuiAddress(rawValue: raw)!
