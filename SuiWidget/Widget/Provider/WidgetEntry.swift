@@ -76,8 +76,8 @@ public struct SuiWidgetEntry: TimelineEntry, Equatable {
                 NFTSummary(objectId: "0x4", name: "Mysten OG"),
             ],
             topNews: [
-                NewsSummary(title: "Sui Foundation announces…", source: .blog, publishedAt: Date()),
-                NewsSummary(title: "v1.50.0 release", source: .githubRelease, publishedAt: Date()),
+                NewsSummary(title: "Sui Foundation announces…", source: .blog, publishedAt: Date(), heroImageURL: nil),
+                NewsSummary(title: "v1.50.0 release", source: .githubRelease, publishedAt: Date(), heroImageURL: nil),
             ],
             sparklinePoints: [1.45, 1.48, 1.50, 1.52, 1.51, 1.55, 1.58, 1.60, 1.62, 1.61, 1.65].map { Decimal($0) },
             isStale: false
@@ -172,10 +172,12 @@ public struct NewsSummary: Sendable, Equatable, Identifiable {
     public let title: String
     public let source: NewsSource
     public let publishedAt: Date
+    public let heroImageURL: String?
     public var id: String { title + "\(publishedAt)" }
-    public init(title: String, source: NewsSource, publishedAt: Date) {
+    public init(title: String, source: NewsSource, publishedAt: Date, heroImageURL: String? = nil) {
         self.title = title
         self.source = source
         self.publishedAt = publishedAt
+        self.heroImageURL = heroImageURL
     }
 }

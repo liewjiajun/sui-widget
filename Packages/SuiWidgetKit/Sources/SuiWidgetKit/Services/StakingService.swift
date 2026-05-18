@@ -56,11 +56,19 @@ public struct StakingService {
             }
         }
 
-        // Replace existing stake rows on the wallet's portfolio (cascade rule on
-        // CachedPortfolio.stakes deletes them when we drop the relationship).
+        // Replace existing stake rows on the wallet's portfolio. Cascade rule
+        // on `CachedPortfolio.stakes` deletes orphans, but SwiftData can flag
+        // "missing delete propagation" if we mutate the relationship while
+        // iterating its current contents — so we drop the relationship
+        // wholesale and then explicitly delete the orphaned rows, mirroring
+        // the safer set-diff pattern used by NFTService.
         if let portfolio = try fetchPortfolio(walletId: walletId) {
-            for existing in portfolio.stakes { modelContext.delete(existing) }
-            for row in newRows { portfolio.stakes.append(row) }
+            let oldStakes = portfolio.stakes
+            for row in newRows { modelContext.insert(row) }
+            portfolio.stakes = newRows
+            for old in oldStakes {
+                modelContext.delete(old)
+            }
         }
 
         try modelContext.save()

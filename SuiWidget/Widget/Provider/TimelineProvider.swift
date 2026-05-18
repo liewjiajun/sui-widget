@@ -87,7 +87,12 @@ public struct SuiTimelineProvider: AppIntentTimelineProvider {
             )
             let newsRows = (try? context.fetch(newsDescriptor)) ?? []
             let topNews = newsRows.prefix(3).map {
-                NewsSummary(title: $0.title, source: $0.source, publishedAt: $0.publishedAt)
+                NewsSummary(
+                    title: $0.title,
+                    source: $0.source,
+                    publishedAt: $0.publishedAt,
+                    heroImageURL: $0.heroImageURL
+                )
             }
 
             let snapshotAt = portfolio?.snapshotAt ?? .distantPast

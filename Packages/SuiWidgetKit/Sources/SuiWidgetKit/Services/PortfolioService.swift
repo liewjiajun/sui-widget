@@ -19,7 +19,11 @@ public struct PortfolioService {
         self.coinGecko = coinGecko
     }
 
-    /// Tokens + prices only. Stakes / NFTs are refreshed by their own services.
+    /// Tokens + prices, with staked SUI folded into the portfolio total.
+    /// Stake/NFT row enumeration is owned by `StakingService` / `NFTService`;
+    /// here we only need the aggregate staked principal so the snapshot's
+    /// `totalUSD` (the big number above the donut) reflects everything the
+    /// user actually owns, not just spendable wallet balances.
     @discardableResult
     public func refresh(walletId: UUID) async throws -> CachedPortfolio {
         let wallet = try fetchWallet(id: walletId)
@@ -27,8 +31,17 @@ public struct PortfolioService {
             throw SuiNSError.invalidAddress(wallet.address)
         }
 
-        // 1. On-chain balances.
+        // 1. On-chain balances + stakes. Stakes are best-effort: a failure
+        //    here means the snapshot omits staked value (the StakingService
+        //    refresh that follows still populates per-position rows). We
+        //    don't want a stake-RPC blip to roll back the entire portfolio
+        //    refresh.
         let balances = try await sui.getAllBalances(owner: owner)
+        let stakeBundles: [SuiDelegatedStake] = (try? await sui.getStakes(owner: owner)) ?? []
+        let stakedBaseUnits: Decimal = stakeBundles.flatMap(\.stakes).reduce(Decimal(0)) {
+            $0 + $1.principal + ($1.estimatedReward ?? 0)
+        }
+        let stakedSUI = stakedBaseUnits / Decimal(1_000_000_000)
 
         // 2. Coin-type → CoinGecko-id mapping (24h TTL cache). Both sides are
         //    canonicalized so short-form RPC coin types (e.g. `0x2::sui::SUI`)
@@ -38,13 +51,21 @@ public struct PortfolioService {
             uniqueKeysWithValues: mappings.map { (CoinTypeCanonicalizer.canonicalize($0.coinType), $0) }
         )
 
-        // 3. Tracked CoinGecko ids.
+        // 3. Tracked CoinGecko ids. Always include SUI when the user has any
+        //    stakes — otherwise a wallet with all SUI delegated (zero in-wallet)
+        //    would have no SUI price fetched and staked value couldn't be
+        //    valued in USD.
         var trackedIds: [String] = []
         for balance in balances {
             let canonical = CoinTypeCanonicalizer.canonicalize(balance.coinType)
             if let mapping = canonicalLookup[canonical] {
                 trackedIds.append(mapping.coingeckoId)
             }
+        }
+        let suiCanonical = CoinTypeCanonicalizer.canonicalize("0x2::sui::SUI")
+        let suiMapping = canonicalLookup[suiCanonical]
+        if stakedSUI > 0, let suiMapping, !trackedIds.contains(suiMapping.coingeckoId) {
+            trackedIds.append(suiMapping.coingeckoId)
         }
 
         // 4. Batch prices.
@@ -131,6 +152,28 @@ public struct PortfolioService {
                     iconURL: metadata?.iconUrl,
                     isTracked: false
                 ))
+            }
+        }
+
+        // 5b. Fold staked SUI value into the portfolio total. Donut slices
+        //     still reflect only spendable holdings — the StakedBadge below
+        //     the donut surfaces the staked amount as a separate line so the
+        //     allocation breakdown remains coherent.
+        if stakedSUI > 0, let suiMapping {
+            let suiMarket = priceById[suiMapping.coingeckoId]
+            if let suiPrice = suiMarket?.currentPrice {
+                let stakedTodayUSD = stakedSUI * suiPrice
+                portfolioToday += stakedTodayUSD
+                if let change24h = suiMarket?.priceChangePercentage24h {
+                    let factor = Decimal(1 + change24h / 100)
+                    if factor != 0 {
+                        portfolioYesterday += stakedSUI * (suiPrice / factor)
+                    } else {
+                        portfolioYesterday += stakedTodayUSD
+                    }
+                } else {
+                    portfolioYesterday += stakedTodayUSD
+                }
             }
         }
 

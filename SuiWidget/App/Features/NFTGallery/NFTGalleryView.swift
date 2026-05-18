@@ -33,6 +33,10 @@ struct NFTGalleryView: View {
                 viewModel = NFTGalleryViewModel(modelContext: modelContext)
             }
             viewModel?.load()
+            // First entry after adding a wallet: cache is empty, so kick off
+            // an RPC refresh in the background instead of forcing the user to
+            // pull-to-refresh to discover their NFTs.
+            viewModel?.refreshIfEmpty()
         }
     }
 

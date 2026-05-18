@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import Observation
+import WidgetKit
 import SuiWidgetKit
 
 @MainActor
@@ -20,13 +21,34 @@ final class NFTGalleryViewModel {
     private let modelContext: ModelContext
     private let walletService: WalletService
     private let nftService: NFTService
+    private let portfolioService: PortfolioService
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         let rpc = SuiRPCClient()
         let suiNS = SuiNSResolver(rpc: rpc, modelContext: modelContext)
         self.walletService = WalletService(modelContext: modelContext, suiNS: suiNS)
-        self.nftService = NFTService(modelContext: modelContext, sui: rpc, thumbnails: nil)
+        // Root the thumbnail cache at the App Group container so generated
+        // thumbnails persist where the widget extension can read them.
+        let thumbnailContainerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: AppGroupStore.groupIdentifier
+        ) ?? FileManager.default.temporaryDirectory
+        self.nftService = NFTService(
+            modelContext: modelContext,
+            sui: rpc,
+            thumbnails: ThumbnailGenerator(
+                cache: ImageCache(containerURL: thumbnailContainerURL)
+            )
+        )
+        // NFTs attach onto the wallet's CachedPortfolio row, so a portfolio
+        // refresh has to run before the NFT refresh on first entry — otherwise
+        // there's no portfolio to attach to and the NFTGallery view stays
+        // empty even after a successful RPC pull.
+        self.portfolioService = PortfolioService(
+            modelContext: modelContext,
+            sui: rpc,
+            coinGecko: CoinGeckoClient(modelContext: modelContext)
+        )
     }
 
     func load() {
@@ -47,10 +69,20 @@ final class NFTGalleryViewModel {
                 .map { Collection(id: $0.key, name: $0.key, nfts: $0.value) }
                 .sorted { $0.name < $1.name }
             loadState = collections.isEmpty
-                ? .empty(message: "No NFTs in this wallet yet.")
+                ? .empty(message: "No NFTs cached yet. Pull to refresh — NFTs locked in Kiosks (marketplaces) aren't enumerated in V1.")
                 : .loaded
         } catch {
             loadState = .error(message: error.localizedDescription, retry: nil)
+        }
+    }
+
+    /// On every tab appear: load from cache, and if cache is empty kick off a
+    /// network refresh so the user doesn't have to manually pull-to-refresh on
+    /// first entry. This is the path that surfaces NFTs when a wallet has been
+    /// added but its initial sync didn't include an NFT pass for any reason.
+    func refreshIfEmpty() {
+        if collections.isEmpty {
+            Task { await refresh() }
         }
     }
 
@@ -58,10 +90,19 @@ final class NFTGalleryViewModel {
         loadState = .loading
         do {
             let wallets = try walletService.list()
-            if let primary = wallets.first(where: \.isPrimary) ?? wallets.first {
-                _ = try await nftService.refresh(walletId: primary.id)
+            guard let primary = wallets.first(where: \.isPrimary) ?? wallets.first else {
+                load()
+                return
             }
+            // Portfolio refresh runs first because NFTService attaches the
+            // upserted CachedNFTItem rows onto `portfolio.nfts`. If the
+            // portfolio row is missing the attachment becomes a no-op.
+            _ = try? await portfolioService.refresh(walletId: primary.id)
+            _ = try await nftService.refresh(walletId: primary.id)
             load()
+            // Widgets read the same portfolio.nfts relationship — reload
+            // timelines so any showInWidget thumbnails appear immediately.
+            WidgetCenter.shared.reloadAllTimelines()
         } catch {
             refreshError = error.localizedDescription
             load()

@@ -99,6 +99,9 @@ struct PortfolioView: View {
         default:
             ScrollView {
                 VStack(spacing: SuiSpacing.s4) {
+                    if let message = viewModel.refreshError {
+                        refreshWarningBanner(message: message)
+                    }
                     if let aggregate = viewModel.aggregate {
                         aggregateSection(viewModel: viewModel, aggregate: aggregate)
                     } else if let portfolio = viewModel.portfolio {
@@ -340,6 +343,28 @@ struct PortfolioView: View {
             }
         }
         .padding()
+    }
+
+    /// Small inline banner shown above the donut when a refresh partially
+    /// failed (e.g. portfolio loaded but stakes / NFTs timed out). Without
+    /// this, partial failures were silent and the user assumed the data they
+    /// see is complete when it isn't.
+    private func refreshWarningBanner(message: String) -> some View {
+        HStack(alignment: .top, spacing: SuiSpacing.s2) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(SuiTypography.body(12))
+                .foregroundStyle(SuiColor.coral)
+            Text(message)
+                .font(SuiTypography.mono(11))
+                .foregroundStyle(SuiColor.coral)
+                .lineLimit(3)
+            Spacer(minLength: 0)
+        }
+        .padding(SuiSpacing.s2)
+        .background(
+            RoundedRectangle(cornerRadius: SuiSpacing.cardRadius, style: .continuous)
+                .fill(SuiColor.coral.opacity(0.10))
+        )
     }
 
     private var emptyState: some View {

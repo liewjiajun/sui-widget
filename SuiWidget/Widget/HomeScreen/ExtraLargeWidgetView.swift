@@ -60,13 +60,16 @@ public struct ExtraLargeWidgetView: View {
                 }
                 column(title: "NEWS · \(entry.topNews.count)") {
                     ForEach(entry.topNews.prefix(3)) { item in
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(item.title)
-                                .font(SuiTypography.body(10, weight: .semibold))
-                                .lineLimit(2)
-                            Text(item.source.rawValue.uppercased())
-                                .font(SuiTypography.mono(7))
-                                .foregroundStyle(.secondary)
+                        HStack(alignment: .top, spacing: 4) {
+                            NewsHeroImage(item: item, size: 30)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(item.title)
+                                    .font(SuiTypography.body(10, weight: .semibold))
+                                    .lineLimit(2)
+                                Text(item.source.rawValue.uppercased())
+                                    .font(SuiTypography.mono(7))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

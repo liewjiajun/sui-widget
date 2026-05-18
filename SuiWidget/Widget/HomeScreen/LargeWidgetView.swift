@@ -37,9 +37,17 @@ public struct LargeWidgetView: View {
             Spacer().frame(height: 4)
             if let headline = entry.topNews.first {
                 Text("NEWS").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
-                Text(headline.title)
-                    .font(SuiTypography.body(11, weight: .semibold))
-                    .lineLimit(2)
+                HStack(alignment: .top, spacing: 6) {
+                    NewsHeroImage(item: headline, size: 36)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(headline.title)
+                            .font(SuiTypography.body(11, weight: .semibold))
+                            .lineLimit(2)
+                        Text(headline.source.rawValue.uppercased())
+                            .font(SuiTypography.mono(7, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
             Spacer()
             Text(refreshLabel)
