@@ -3,13 +3,29 @@ import SwiftData
 
 /// Owns the shared `ModelContainer` used by both the main app and the widget extension.
 ///
-/// Phase 0 ships with an empty schema. Phase 1 registers `Wallet`, `CachedPortfolio`,
-/// `CachedTokenHolding`, `CachedStakePosition`, `CachedNFTItem`, `CachedNewsItem`,
-/// and `AppSettings` here.
+/// Phase 1 registers all entities the data layer persists. The in-memory variant
+/// (`makeContainer(inMemory: true)`) skips the App Group container path and is safe
+/// to call from unit tests; the production variant binds the store to
+/// `group.io.sui.widget` so the widget extension reads the same database.
 public enum SwiftDataStack {
 
-    /// Currently empty. Add models in Phase 1 by listing them in this array.
-    public static let schema = Schema([])
+    /// All persistent entities. Order is alphabetical so future additions produce
+    /// minimal diff churn.
+    public static let schema = Schema([
+        ActivityEvent.self,
+        AppSettings.self,
+        CachedCoinListEntry.self,
+        CachedNFTItem.self,
+        CachedNewsItem.self,
+        CachedPortfolio.self,
+        CachedStakePosition.self,
+        CachedSuiNSResolution.self,
+        CachedTokenHolding.self,
+        CachedValidatorMetadata.self,
+        Pet.self,
+        Quest.self,
+        Wallet.self,
+    ])
 
     /// On-disk store name. Stable across versions so SwiftData migration paths
     /// remain valid.
