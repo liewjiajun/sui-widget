@@ -36,6 +36,9 @@ struct RootView: View {
             deepLinkDestination = destination
             switch destination {
             case .wallet, .stakeList:
+                // V1: stakeList deep link drops user on Portfolio tab; tap STAKED
+                // badge to drill in. Auto-push to StakeListView via
+                // NavigationStack.path lands in V1.1.
                 selectedTab = .portfolio
             case .nft:
                 selectedTab = .nfts

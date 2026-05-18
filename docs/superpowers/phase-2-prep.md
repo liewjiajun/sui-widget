@@ -85,3 +85,30 @@ services into SwiftUI screens.
     structure under `SuiWidgetKit/` (Models, Networking, Services, Storage,
     Utilities) — currently the diagram is high-level and mostly accurate but
     doesn't show the new entities.
+
+## V1 UI / Widget follow-ups (added 2026-05-18)
+
+- **Auto-push StakeListView on `suiwidget://stake` deep link.** Today the deep
+  link switches to the Portfolio tab but doesn't auto-push StakeListView; the
+  user has to tap the STAKED badge. Wire via `NavigationStack(path:)`.
+- **Per-widget instance configuration write-back.** The in-app Widget
+  Configurator is preview-only; it doesn't write per-instance config back to
+  any specific widget. The system Edit Widget sheet is the canonical write
+  path. V1.1 should add a way to share configuration presets via App Group.
+- **WidgetCenter reload trigger on data refresh.** PortfolioView.refresh()
+  calls into the data layer but does NOT call WidgetCenter.shared.reloadAllTimelines().
+  Add the call so widgets refresh immediately after an app-triggered refresh
+  completes.
+- **`Wallet.includeInWidget` model flag.** `WalletEditViewModel.includeInWidget`
+  is UI-only. The widget extension currently treats the primary wallet as the
+  source. V1.1 should add the flag to the @Model and let widgets read multi-
+  wallet aggregates.
+- **Real token price chart in TokenDetailView.** Placeholder copy ships in V1.
+  V1.1 should add a sparkline or chart backed by CoinGecko's `/coins/{id}/market_chart`.
+- **Per-validator stake detail.** Tapping a StakeRowView is a no-op in V1.
+  V1.1 should push to a detail showing commission, epoch history, rewards.
+- **Real refresh frequency wiring.** Settings has the picker; widget configurator
+  has the picker. The actual scheduling between app foreground refreshes and
+  widget timeline expiry is approximate (15-min default with no enforcement).
+  V1.1 should honor the chosen frequency via a foreground timer and the AppIntent's
+  refresh parameter.

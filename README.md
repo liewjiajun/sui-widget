@@ -28,9 +28,36 @@ open SuiWidget.xcodeproj         # then pick a Development Team on both targets
 swift test --package-path Packages/SuiWidgetKit
 ```
 
-## Phase 1 — data layer status
+## V1 — Shipping status
 
-`SuiWidgetKit` ships the full data layer as of Phase 1:
+The full V1 app + widget extension ship in this build:
+
+- **App (4 tabs):** Portfolio (donut + tokens + staked badge → StakeList drill-in), NFTs (grid grouped by collection, in-widget toggle, Suiscan deep link), News (editorial hero + list + in-app browser), Settings (DISPLAY/DATA/ABOUT)
+- **Onboarding:** 3-screen first-launch flow with paging + dots indicator
+- **Wallet management:** Add (with live SuiNS resolution), list (PRIMARY/OTHERS groups, swipe actions), edit
+- **WidgetKit:** 4 Home Screen sizes (Small/Medium/Large/ExtraLarge with staking footer) + 3 Lock Screen sizes (Inline/Circular/Rectangular) + AppIntentConfiguration for per-instance config
+- **In-app Widget Configurator:** Live preview + variant picker + drill rows
+- **Pixel-droplet AppIcon:** 1024×1024 source in light/dark/iOS-18-tinted variants
+- **Pet V2 hook:** Reserved circular slot in Medium/Large widgets + "Coming soon" sheet via deep link
+
+### Try it
+
+1. `xcodegen generate`
+2. Open `SuiWidget.xcodeproj`, select an iPhone 17 simulator destination
+3. Build & run; the app launches into the 3-screen onboarding (skip available)
+4. Add the test wallet: `0xe6d2886da571e044dd3873d40eba75aa5610c51618f0c48fa0ca376d492d56a8` (Mysten Labs `validator.sui`) or paste your own
+5. Pull-to-refresh on Portfolio to fetch live data
+6. Tap the **STAKED** badge to drill into the Stake List (where users see their validator positions)
+7. Add the **Sui Portfolio** widget to the Home Screen — long-press → Edit Widget surfaces the AppIntent config sheet
+8. The **ExtraLarge** widget includes a staking footer showing total staked + position count + APY
+
+### Deferred from V1 (tracked in `docs/superpowers/phase-2-prep.md`)
+
+Coin-type canonicalization, NFT thumbnail writeback via ModelActor, BGTaskScheduler handler bodies, real token price chart, per-validator stake detail screen, QR-scanner pill, localization beyond English.
+
+## Data layer (`SuiWidgetKit`)
+
+`SuiWidgetKit` ships the full data layer:
 
 - **`SuiRPCClient`** — seven Sui RPC methods with endpoint rotation + exponential backoff
 - **`CoinGeckoClient`** — coin list (24h TTL) + batched market prices
@@ -38,7 +65,7 @@ swift test --package-path Packages/SuiWidgetKit
 - **`SuiNSResolver`** — `0x...` / `name.sui` / `@name` resolution with 1h cache
 - **Image pipeline** — IPFS gateway rotation → ImageIO resize → App Group cache
 - **Services** — `WalletService`, `PortfolioService`, `NFTService`, `StakingService`, `NewsService`
-- **SwiftData schema** — 13 entities registered, all Phase 0 deferred items resolved
+- **SwiftData schema** — 13 entities registered
 
 ### Run the live integration tests
 
