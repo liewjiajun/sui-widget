@@ -148,8 +148,9 @@ struct PortfolioView: View {
                 .padding(.horizontal, SuiSpacing.s2)
             }
 
-            // Per-V1: skip the staked badge in aggregate mode (drill-in target
-            // would need a multi-wallet stake list view; tracked for V1.1).
+            // In aggregate mode the staked badge is intentionally omitted —
+            // drilling into stakes requires a single wallet context, which the
+            // user selects from the wallet picker above.
 
             aggregateTokenSection(tokens: aggregate.tokens)
         }

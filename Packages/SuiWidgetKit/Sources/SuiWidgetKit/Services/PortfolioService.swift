@@ -1,10 +1,9 @@
 import Foundation
 import SwiftData
 
-/// Phase 1 integration entry point: builds a `CachedPortfolio` snapshot from
-/// on-chain balances + CoinGecko prices. Cache replacement is destructive — the
-/// previous snapshot for the wallet is deleted (cascade-clearing children)
-/// before the new one is inserted.
+/// Builds a `CachedPortfolio` snapshot from on-chain balances + CoinGecko
+/// prices. Cache replacement is destructive — the previous snapshot for the
+/// wallet is deleted (cascade-clearing children) before the new one is inserted.
 public struct PortfolioService {
     public let modelContext: ModelContext
     public let sui: SuiRPCClient

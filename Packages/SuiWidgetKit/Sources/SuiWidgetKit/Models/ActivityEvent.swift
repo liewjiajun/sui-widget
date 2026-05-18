@@ -1,8 +1,9 @@
 import Foundation
 import SwiftData
 
-/// V3 hook (per Phase 0 prep #16). Append-only log of wallet-scoped events
-/// used for retroactive quest verification. Not actively written in Phase 1.
+/// V3 hook. Append-only log of wallet-scoped events used for retroactive
+/// quest verification. Declared, registered in `SwiftDataStack.schema`,
+/// never written in V1.
 @Model
 public final class ActivityEvent {
     @Attribute(.unique) public var id: UUID

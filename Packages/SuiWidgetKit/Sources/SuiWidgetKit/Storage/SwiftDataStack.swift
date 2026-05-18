@@ -3,10 +3,12 @@ import SwiftData
 
 /// Owns the shared `ModelContainer` used by both the main app and the widget extension.
 ///
-/// Phase 1 registers all entities the data layer persists. The in-memory variant
-/// (`makeContainer(inMemory: true)`) skips the App Group container path and is safe
-/// to call from unit tests; the production variant binds the store to
-/// `group.io.sui.widget` so the widget extension reads the same database.
+/// The schema registers all entities the V1 data layer persists, plus the V2
+/// (`Pet`) and V3 (`Quest`, `ActivityEvent`) stubs so future versions ship
+/// without schema migration. The in-memory variant (`makeContainer(inMemory: true)`)
+/// skips the App Group container path and is safe to call from unit tests; the
+/// production variant binds the store to `group.io.sui.widget` so the widget
+/// extension reads the same database.
 public enum SwiftDataStack {
 
     /// All persistent entities. Order is alphabetical so future additions produce

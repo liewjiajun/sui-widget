@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// A Sui wallet the user is tracking. Not yet registered in SwiftDataStack.schema (Phase 1).
+/// A Sui wallet the user is tracking. Registered in `SwiftDataStack.schema`.
 @Model
 public final class Wallet {
     @Attribute(.unique) public var id: UUID

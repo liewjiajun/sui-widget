@@ -79,6 +79,7 @@ final class SettingsViewModel {
     func save() {
         let descriptor = FetchDescriptor<AppSettings>()
         let settings = (try? modelContext.fetch(descriptor).first) ?? AppSettings()
+        let previousMinutes = settings.refreshFrequencyMinutes
         settings.theme = theme.rawValue
         settings.defaultCurrency = defaultCurrency.rawValue.uppercased()
         settings.showUntrackedTokens = showUntrackedTokens
@@ -89,6 +90,12 @@ final class SettingsViewModel {
         }
         settings.notificationsEnabled = notificationsEnabled
         try? modelContext.save()
+
+        // Notify foreground observers (e.g. PortfolioViewModel) so the new
+        // refresh cadence takes effect immediately without an app restart.
+        if previousMinutes != settings.refreshFrequencyMinutes {
+            NotificationCenter.default.post(name: .suiWidgetRefreshFrequencyChanged, object: nil)
+        }
     }
 
     func computeCacheSize() {

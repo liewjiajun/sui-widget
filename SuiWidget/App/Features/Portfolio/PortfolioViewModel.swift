@@ -43,6 +43,12 @@ final class PortfolioViewModel {
     private let stakingService: StakingService
     private let priceHistoryService: PriceHistoryService
     private var foregroundTimer: Timer?
+    /// Observer token for `.suiWidgetRefreshFrequencyChanged`. Excluded from
+    /// `@Observable` tracking and marked `nonisolated(unsafe)` so the
+    /// nonisolated `deinit` can read it. The token is only mutated once in
+    /// `init`, so there is no concurrent access in practice.
+    @ObservationIgnored
+    nonisolated(unsafe) private var refreshFrequencyObserver: NSObjectProtocol?
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -59,6 +65,24 @@ final class PortfolioViewModel {
             modelContext: modelContext,
             coinGecko: CoinGeckoClient(modelContext: modelContext)
         )
+
+        // Reschedule the foreground refresh timer immediately when the user
+        // changes refresh frequency in Settings — no app restart needed.
+        refreshFrequencyObserver = NotificationCenter.default.addObserver(
+            forName: .suiWidgetRefreshFrequencyChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.startForegroundTimer()
+            }
+        }
+    }
+
+    nonisolated deinit {
+        if let token = refreshFrequencyObserver {
+            NotificationCenter.default.removeObserver(token)
+        }
     }
 
     func loadInitial() {

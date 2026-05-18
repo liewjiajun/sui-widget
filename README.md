@@ -51,9 +51,24 @@ The full V1 app + widget extension ship in this build:
 7. Add the **Sui Portfolio** widget to the Home Screen — long-press → Edit Widget surfaces the AppIntent config sheet
 8. The **ExtraLarge** widget includes a staking footer showing total staked + position count + APY
 
-### Deferred from V1 (tracked in `docs/superpowers/phase-2-prep.md`)
+### V2 / V3 hooks deliberately stubbed in V1
 
-Coin-type canonicalization, NFT thumbnail writeback via ModelActor, BGTaskScheduler handler bodies, real token price chart, per-validator stake detail screen, QR-scanner pill, localization beyond English.
+These are NOT placeholders — they're explicit hooks for future versions per
+[`CLAUDE.md`](CLAUDE.md)'s V2 / V3 scaffolding requirements, and they ship in
+V1 as stubs:
+
+- **Pet "Coming soon" sheet** (V2 hook): tapping the reserved circular slot on
+  Medium / Large widgets — or the `suiwidget://pet/hatch` deep link — opens a
+  Coming Soon sheet. The pet generation algorithm + sprite renderer is V2 scope.
+- **Quest reminders toggle** in Onboarding step 2: disabled and labeled
+  "(coming)". The full Quest list screen is gated behind a feature flag.
+- **Pet / Quest SwiftData models**: declared with full schema, registered in
+  `SwiftDataStack.schema`, never instantiated in V1. Reserved so V2 / V3 ship
+  without schema migration.
+- **ActivityEvent model**: declared, registered, never written. V3 retroactive
+  quest verification will populate it.
+
+Everything else in V1 is fully functional with no deferred logic.
 
 ## Data layer (`SuiWidgetKit`)
 

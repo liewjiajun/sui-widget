@@ -3,8 +3,9 @@ import Foundation
 /// File-based shared store for values that must round-trip between the main
 /// app and the widget extension via the `group.io.sui.widget` App Group container.
 ///
-/// Phase 0 uses this for a single handshake value. Phase 1+ adds typed accessors
-/// (cached portfolio JSON snapshot, last-refresh timestamp, etc.).
+/// In V1 this hosts the original handshake value plus per-NFT thumbnail files
+/// under `Thumbnails/`. SwiftData persists everything else into the same
+/// container via `SwiftDataStack`.
 public struct AppGroupStore {
 
     /// The shared App Group identifier. Mirrored in the entitlement files for both targets.

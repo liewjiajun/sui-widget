@@ -81,13 +81,28 @@ public struct NFTService {
         }
         try modelContext.save()
 
-        // Best-effort background thumbnail generation for new NFTs. Writes back
-        // to the model context are deferred to Phase 2 (ModelActor) — for now,
-        // disk files are produced and subsequent refreshes can reconcile.
+        // Best-effort background thumbnail generation for new NFTs. The
+        // detached task downloads + resizes the image, then hops onto a
+        // dedicated `ThumbnailWriteActor` (which owns its own `ModelContext`)
+        // to write the resulting file path back to `CachedNFTItem`. The write
+        // is best-effort: if the row was deleted in the meantime, the actor
+        // silently no-ops.
         if let thumbnails {
+            let writeActor = ThumbnailWriteActor(modelContainer: modelContext.container)
             for (objectId, imageURL) in newItems {
-                Task.detached(priority: .background) {
-                    _ = try? await thumbnails.generate(objectId: objectId, remoteURL: imageURL)
+                Task.detached(priority: .background) { [thumbnails] in
+                    do {
+                        let result = try await thumbnails.generate(
+                            objectId: objectId,
+                            remoteURL: imageURL
+                        )
+                        try? await writeActor.writeThumbnailPath(
+                            objectId: objectId,
+                            path: result.widgetURL.path
+                        )
+                    } catch {
+                        // Best-effort — the next NFT refresh will reconcile.
+                    }
                 }
             }
         }
