@@ -11,10 +11,12 @@ public struct MediumWidgetView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
                     SuiGlyph(size: 12)
-                    Text(entry.wallet?.label ?? "SUI")
-                        .font(SuiTypography.mono(9, weight: .bold))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    if let label = entry.wallet?.displayString(for: entry.configuration.walletDisplay) {
+                        Text(label)
+                            .font(SuiTypography.mono(9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     Spacer()
                     PetSlotView()
                 }

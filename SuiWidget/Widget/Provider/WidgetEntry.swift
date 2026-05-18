@@ -53,7 +53,11 @@ public struct SuiWidgetEntry: TimelineEntry, Equatable {
     public static var preview: SuiWidgetEntry {
         SuiWidgetEntry(
             configuration: SuiWidgetConfigurationIntent(),
-            wallet: WalletSummary(label: "validator.sui", shortAddress: "0xe6d2…6a8"),
+            wallet: WalletSummary(
+                label: "validator.sui",
+                suiNSName: "validator.sui",
+                shortAddress: "0xe6d2…6a8"
+            ),
             portfolio: PortfolioSummary(
                 totalUSD: 2841.50,
                 change24hUSD: 67.20,
@@ -86,11 +90,34 @@ public struct SuiWidgetEntry: TimelineEntry, Equatable {
 }
 
 public struct WalletSummary: Sendable, Equatable {
-    public let label: String
+    /// User-supplied label or nil.
+    public let label: String?
+    /// Resolved SuiNS name (e.g., "validator.sui") or nil.
+    public let suiNSName: String?
+    /// Truncated address e.g. "0xe6d2…6a8". Always present.
     public let shortAddress: String
-    public init(label: String, shortAddress: String) {
+
+    public init(label: String?, suiNSName: String?, shortAddress: String) {
         self.label = label
+        self.suiNSName = suiNSName
         self.shortAddress = shortAddress
+    }
+
+    /// Returns the string to display per the user's widget configuration choice.
+    /// Returns nil for `.hidden` — caller should omit the label line entirely.
+    public func displayString(for choice: WalletIdentifierDisplayOption) -> String? {
+        switch choice {
+        case .hidden:
+            return nil
+        case .suiNSName:
+            return suiNSName ?? shortAddress
+        case .atName:
+            // "validator.sui" → "@validator"; if no SuiNS name, fall back to short address.
+            guard let name = suiNSName, name.hasSuffix(".sui") else { return shortAddress }
+            return "@" + String(name.dropLast(".sui".count))
+        case .address:
+            return shortAddress
+        }
     }
 }
 

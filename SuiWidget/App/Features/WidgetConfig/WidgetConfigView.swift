@@ -77,8 +77,29 @@ struct WidgetConfigView: View {
                 }
                 .pickerStyle(.inline)
             }
+            settingRow(label: "Show wallet as", value: walletDisplayLabel) {
+                Picker("Show wallet as", selection: Binding(get: { viewModel.walletDisplay }, set: { viewModel.walletDisplay = $0 })) {
+                    ForEach(WalletIdentifierDisplayOption.allCases, id: \.self) { option in
+                        Text(walletDisplayShortLabel(option)).tag(option)
+                    }
+                }
+                .pickerStyle(.inline)
+            }
 
             footerNote
+        }
+    }
+
+    private var walletDisplayLabel: String {
+        walletDisplayShortLabel(viewModel.walletDisplay)
+    }
+
+    private func walletDisplayShortLabel(_ option: WalletIdentifierDisplayOption) -> String {
+        switch option {
+        case .suiNSName: return "SuiNS name"
+        case .atName: return "@ name"
+        case .address: return "Address"
+        case .hidden: return "Hidden"
         }
     }
 

@@ -10,6 +10,7 @@ final class WidgetConfigViewModel {
     var refresh: RefreshFrequencyOption = .auto
     var currency: CurrencyOption = .usd
     var variant: WidgetVariantOption = .default
+    var walletDisplay: WalletIdentifierDisplayOption = .suiNSName
 
     /// Constructs a SuiWidgetConfigurationIntent populated with the current selections,
     /// for use in the live preview.
@@ -19,6 +20,7 @@ final class WidgetConfigViewModel {
         intent.refresh = refresh
         intent.currency = currency
         intent.variant = variant
+        intent.walletDisplay = walletDisplay
         return intent
     }
 }

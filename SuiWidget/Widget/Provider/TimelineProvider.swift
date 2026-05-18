@@ -45,7 +45,8 @@ public struct SuiTimelineProvider: AppIntentTimelineProvider {
 
             // Build summaries from the cached portfolio (if any).
             let walletSummary = WalletSummary(
-                label: wallet.label ?? wallet.suiNSName ?? Self.shortAddress(wallet.address),
+                label: wallet.label,
+                suiNSName: wallet.suiNSName,
                 shortAddress: Self.shortAddress(wallet.address)
             )
 

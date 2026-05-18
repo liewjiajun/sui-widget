@@ -11,10 +11,12 @@ public struct ExtraLargeWidgetView: View {
             // Top: portfolio hero
             HStack(spacing: 8) {
                 SuiGlyph(size: 16)
-                Text(entry.wallet?.label ?? "SUI")
-                    .font(SuiTypography.mono(11, weight: .bold))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                if let label = entry.wallet?.displayString(for: entry.configuration.walletDisplay) {
+                    Text(label)
+                        .font(SuiTypography.mono(11, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 Spacer()
                 PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 46)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
