@@ -18,6 +18,7 @@ jobs:
 
   ios-build:
     name: iOS app + widget build
+    needs: package-tests
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4

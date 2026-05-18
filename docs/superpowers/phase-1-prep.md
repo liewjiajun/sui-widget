@@ -1,7 +1,14 @@
 # Phase 1 Preparation Notes
 
 **Created:** 2026-05-17 (end of Phase 0)
+**Status:** Resolved 2026-05-18 (during Phase 1 Task 1)
 **Source:** Final code review across the full Phase 0 implementation (15 commits, `dd307ee..0d833fc`)
+
+> All pre-schema-registration items below were resolved in Phase 1 Task 1 (commit `91018060`).
+> All other items rolled into Phase 1 work where applicable. New Phase 2 follow-ups documented
+> in [phase-2-prep.md](phase-2-prep.md).
+
+---
 
 This document captures items the Phase 0 reviewers explicitly deferred. Phase 1 begins with `SuiWidgetKit/SwiftDataStack.schema` being populated; **everything below should be resolved before that first `Schema([...])` registration**, because post-registration changes require a versioned migration.
 

@@ -28,6 +28,30 @@ open SuiWidget.xcodeproj         # then pick a Development Team on both targets
 swift test --package-path Packages/SuiWidgetKit
 ```
 
+## Phase 1 — data layer status
+
+`SuiWidgetKit` ships the full data layer as of Phase 1:
+
+- **`SuiRPCClient`** — seven Sui RPC methods with endpoint rotation + exponential backoff
+- **`CoinGeckoClient`** — coin list (24h TTL) + batched market prices
+- **`RSSClient`** — Sui blog + MystenLabs releases feeds, merged + deduped (FeedKit 9.x)
+- **`SuiNSResolver`** — `0x...` / `name.sui` / `@name` resolution with 1h cache
+- **Image pipeline** — IPFS gateway rotation → ImageIO resize → App Group cache
+- **Services** — `WalletService`, `PortfolioService`, `NFTService`, `StakingService`, `NewsService`
+- **SwiftData schema** — 13 entities registered, all Phase 0 deferred items resolved
+
+### Run the live integration tests
+
+The fast unit tests (`swift test`) replay committed JSON fixtures and never touch
+the network. A separate `@Suite` exercises the whole layer against the live
+Sui mainnet + CoinGecko + RSS feeds — disabled by default:
+
+```bash
+swift test --package-path Packages/SuiWidgetKit --filter "Live integration"
+```
+
+The integration test wallet is `0xe6d2886d…d492d56a8` (`validator.sui`).
+
 ## Repo layout
 
 See [`docs/superpowers/specs/2026-05-17-phase-0-project-setup-design.md`](docs/superpowers/specs/2026-05-17-phase-0-project-setup-design.md) for the authoritative design.
