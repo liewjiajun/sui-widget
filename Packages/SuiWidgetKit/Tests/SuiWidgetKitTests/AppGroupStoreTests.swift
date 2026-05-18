@@ -6,42 +6,42 @@ import Testing
 struct AppGroupStoreTests {
 
     @Test("round-trips a handshake value through a file in the container")
-    func roundTripsHandshakeValue() throws {
+    func roundTripsHandshakeValue() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let store = AppGroupStore(containerURL: dir)
-        try store.writeHandshake("test-value")
+        try await store.writeHandshake("test-value")
 
-        let read = try store.readHandshake()
+        let read = try await store.readHandshake()
         #expect(read?.value == "test-value")
     }
 
     @Test("returns nil when no handshake file has been written")
-    func returnsNilWhenAbsent() throws {
+    func returnsNilWhenAbsent() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let store = AppGroupStore(containerURL: dir)
-        #expect(try store.readHandshake() == nil)
+        #expect(try await store.readHandshake() == nil)
     }
 
     @Test("second write overwrites the first")
-    func secondWriteOverwritesFirst() throws {
+    func secondWriteOverwritesFirst() async throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
 
         let store = AppGroupStore(containerURL: dir)
-        try store.writeHandshake("first-value")
-        try store.writeHandshake("second-value")
+        try await store.writeHandshake("first-value")
+        try await store.writeHandshake("second-value")
 
-        let read = try store.readHandshake()
+        let read = try await store.readHandshake()
         #expect(read?.value == "second-value")
     }
 }

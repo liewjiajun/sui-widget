@@ -36,25 +36,26 @@ public struct AppGroupStore {
         containerURL.appendingPathComponent(Self.handshakeFilename)
     }
 
-    /// Writes a `HandshakePayload` containing `value` and the current timestamp.
-    public func writeHandshake(_ value: String) throws {
+    public func writeHandshake(_ value: String) async throws {
+        let url = handshakeURL
         let payload = HandshakePayload(value: value, writtenAt: Date())
-        let data = try JSONEncoder().encode(payload)
-        try data.write(to: handshakeURL, options: .atomic)
+        try await Task.detached(priority: .userInitiated) {
+            let data = try JSONEncoder().encode(payload)
+            try data.write(to: url, options: .atomic)
+        }.value
     }
 
-    /// Reads the most recent handshake payload, or `nil` if none has been written.
-    ///
-    /// Uses a single read attempt rather than a `fileExists` pre-check, avoiding the
-    /// TOCTOU race where the file could disappear between the existence check and the read.
-    /// `DecodingError` (corrupt file) and other I/O errors still propagate as `throws`.
-    public func readHandshake() throws -> HandshakePayload? {
-        do {
-            let data = try Data(contentsOf: handshakeURL)
-            return try JSONDecoder().decode(HandshakePayload.self, from: data)
-        } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
-            return nil
-        }
+    public func readHandshake() async throws -> HandshakePayload? {
+        let url = handshakeURL
+        return try await Task.detached(priority: .userInitiated) { () -> HandshakePayload? in
+            do {
+                let data = try Data(contentsOf: url)
+                return try JSONDecoder().decode(HandshakePayload.self, from: data)
+            } catch let error as NSError
+                where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
+                return nil
+            }
+        }.value
     }
 }
 

@@ -42,18 +42,20 @@ struct ContentView: View {
     }
 
     private func writeAndReload() {
-        do {
-            let store = try AppGroupStore()
-            let timestamp = ISO8601DateFormatter().string(from: Date())
-            let value = "hello-\(timestamp)"
-            let payload = HandshakePayload(value: value, writtenAt: Date())
-            try store.writeHandshake(value)
-            lastWritten = payload
-            lastRead = try store.readHandshake()
-            WidgetCenter.shared.reloadAllTimelines()
-            errorMessage = nil
-        } catch {
-            errorMessage = "AppGroupStore error: \(error)"
+        Task { @MainActor in
+            do {
+                let store = try AppGroupStore()
+                let timestamp = ISO8601DateFormatter().string(from: Date())
+                let value = "hello-\(timestamp)"
+                let payload = HandshakePayload(value: value, writtenAt: Date())
+                try await store.writeHandshake(value)
+                lastWritten = payload
+                lastRead = try await store.readHandshake()
+                WidgetCenter.shared.reloadAllTimelines()
+                errorMessage = nil
+            } catch {
+                errorMessage = "AppGroupStore error: \(error)"
+            }
         }
     }
 }
