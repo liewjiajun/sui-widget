@@ -9,6 +9,7 @@ public final class CachedNewsItem {
     public var publishedAt: Date
     public var source: NewsSource
     public var summary: String?
+    public var heroImageURL: String?
 
     public init(
         id: String,
@@ -16,7 +17,8 @@ public final class CachedNewsItem {
         url: String,
         publishedAt: Date,
         source: NewsSource,
-        summary: String? = nil
+        summary: String? = nil,
+        heroImageURL: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -24,5 +26,6 @@ public final class CachedNewsItem {
         self.publishedAt = publishedAt
         self.source = source
         self.summary = summary
+        self.heroImageURL = heroImageURL
     }
 }

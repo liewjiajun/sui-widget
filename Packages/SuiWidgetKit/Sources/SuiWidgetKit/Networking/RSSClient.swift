@@ -10,13 +10,15 @@ public struct RawNewsItem: Equatable, Hashable, Sendable {
     public let publishedAt: Date
     public let source: NewsSource
     public let summary: String?
+    public let heroImageURL: String?
 
     public init(
         title: String,
         url: String,
         publishedAt: Date,
         source: NewsSource,
-        summary: String? = nil
+        summary: String? = nil,
+        heroImageURL: String? = nil
     ) {
         self.urlHash = RawNewsItem.hashURL(url)
         self.title = title
@@ -24,6 +26,7 @@ public struct RawNewsItem: Equatable, Hashable, Sendable {
         self.publishedAt = publishedAt
         self.source = source
         self.summary = summary
+        self.heroImageURL = heroImageURL
     }
 
     static func hashURL(_ url: String) -> String {
@@ -103,7 +106,8 @@ public struct RSSClient: Sendable {
                         url: link,
                         publishedAt: published,
                         source: source,
-                        summary: item.description
+                        summary: item.description,
+                        heroImageURL: Self.extractImageURL(from: item)
                     )
                 }
                 if items.isEmpty { throw RSSError.noEntries }
@@ -121,7 +125,8 @@ public struct RSSClient: Sendable {
                         url: link,
                         publishedAt: published,
                         source: source,
-                        summary: entry.summary?.value
+                        summary: entry.summary?.value,
+                        heroImageURL: Self.extractImageURL(from: entry)
                     )
                 }
                 if entries.isEmpty { throw RSSError.noEntries }
@@ -132,5 +137,73 @@ public struct RSSClient: Sendable {
         case .failure(let error):
             throw RSSError.parseFailed(detail: String(describing: error))
         }
+    }
+
+    // MARK: - Hero image extraction
+
+    /// Picks a hero image URL for a Ghost/WordPress/Substack-style RSS item.
+    /// Priority: media:content[medium=image] → media:thumbnail → image enclosure →
+    /// first <img> in content:encoded → first <img> in description.
+    static func extractImageURL(from item: RSSFeedItem) -> String? {
+        if let url = item.media?.mediaContents?.first(where: {
+            ($0.attributes?.medium ?? "image") == "image"
+        })?.attributes?.url, !url.isEmpty {
+            return url
+        }
+        if let url = item.media?.mediaThumbnails?.first?.attributes?.url, !url.isEmpty {
+            return url
+        }
+        if let enclosure = item.enclosure?.attributes,
+           let url = enclosure.url,
+           (enclosure.type ?? "image/").hasPrefix("image") {
+            return url
+        }
+        if let html = item.content?.contentEncoded,
+           let url = firstImageURL(inHTML: html) {
+            return url
+        }
+        if let html = item.description, let url = firstImageURL(inHTML: html) {
+            return url
+        }
+        return nil
+    }
+
+    /// Atom variant. GitHub releases atoms don't carry images, but the same
+    /// media: namespace is supported by FeedKit on AtomFeedEntry; fall back to
+    /// scanning the entry content/summary HTML.
+    static func extractImageURL(from entry: AtomFeedEntry) -> String? {
+        if let url = entry.media?.mediaContents?.first(where: {
+            ($0.attributes?.medium ?? "image") == "image"
+        })?.attributes?.url, !url.isEmpty {
+            return url
+        }
+        if let url = entry.media?.mediaThumbnails?.first?.attributes?.url, !url.isEmpty {
+            return url
+        }
+        if let html = entry.content?.value, let url = firstImageURL(inHTML: html) {
+            return url
+        }
+        if let html = entry.summary?.value, let url = firstImageURL(inHTML: html) {
+            return url
+        }
+        return nil
+    }
+
+    /// Crude but correct enough for Ghost/Substack-style blog HTML: extract the
+    /// first `<img src="…">` URL. Handles single or double quotes and arbitrary
+    /// attributes between `<img` and `src=`.
+    static func firstImageURL(inHTML html: String) -> String? {
+        let pattern = #"<img\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+            return nil
+        }
+        let range = NSRange(html.startIndex..., in: html)
+        guard let match = regex.firstMatch(in: html, options: [], range: range),
+              match.numberOfRanges > 1,
+              let srcRange = Range(match.range(at: 1), in: html) else {
+            return nil
+        }
+        let url = String(html[srcRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return url.isEmpty ? nil : url
     }
 }

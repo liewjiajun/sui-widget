@@ -20,19 +20,43 @@ struct NFTThumbnailView: View {
 
     @ViewBuilder
     private var background: some View {
-        if let path = nft.thumbnailFilePath, let url = URL(string: path) {
+        // Prefer the cached App-Group thumbnail when the file actually exists
+        // on disk. Raw filesystem paths must use URL(fileURLWithPath:) — the
+        // previous URL(string:) form silently produced nil for absolute paths
+        // without a scheme, which suppressed the remote-image fallback and left
+        // the grid showing initials when the cache was missing.
+        if let path = nft.thumbnailFilePath,
+           FileManager.default.fileExists(atPath: path) {
+            let url = URL(fileURLWithPath: path)
             AsyncImage(url: url) { phase in
-                if let image = phase.image {
+                switch phase {
+                case .success(let image):
                     image.resizable().scaledToFill()
-                } else {
-                    fallback
+                case .failure:
+                    remoteOrFallback
+                case .empty:
+                    remoteOrFallback
+                @unknown default:
+                    remoteOrFallback
                 }
             }
-        } else if let url = URL(string: nft.imageURL) {
+        } else {
+            remoteOrFallback
+        }
+    }
+
+    @ViewBuilder
+    private var remoteOrFallback: some View {
+        if let url = URL(string: nft.imageURL), !nft.imageURL.isEmpty {
             AsyncImage(url: url) { phase in
-                if let image = phase.image {
+                switch phase {
+                case .success(let image):
                     image.resizable().scaledToFill()
-                } else {
+                case .empty:
+                    fallback.overlay(ProgressView().controlSize(.small))
+                case .failure:
+                    fallback
+                @unknown default:
                     fallback
                 }
             }

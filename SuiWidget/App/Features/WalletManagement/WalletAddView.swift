@@ -109,13 +109,20 @@ struct WalletAddView: View {
                 Button(action: { Task { await viewModel.add() } }) {
                     HStack {
                         Spacer()
-                        Text("Add wallet")
-                            .font(SuiTypography.body(15, weight: .semibold))
+                        if viewModel.isSyncing {
+                            ProgressView().tint(.white)
+                            Text("Syncing wallet…")
+                                .font(SuiTypography.body(15, weight: .semibold))
+                                .padding(.leading, SuiSpacing.s2)
+                        } else {
+                            Text("Add wallet")
+                                .font(SuiTypography.body(15, weight: .semibold))
+                        }
                         Spacer()
                     }
                 }
-                .disabled(!viewModel.canAdd)
-                .listRowBackground(viewModel.canAdd ? SuiColor.suiBlue : Color.gray.opacity(0.3))
+                .disabled(!viewModel.canAdd || viewModel.isSyncing)
+                .listRowBackground((viewModel.canAdd && !viewModel.isSyncing) ? SuiColor.suiBlue : Color.gray.opacity(0.3))
                 .foregroundStyle(.white)
             }
         }

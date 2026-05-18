@@ -171,9 +171,17 @@ struct PortfolioView: View {
                 .padding(.horizontal, SuiSpacing.s2)
             }
 
-            // In aggregate mode the staked badge is intentionally omitted —
-            // drilling into stakes requires a single wallet context, which the
-            // user selects from the wallet picker above.
+            // Aggregate-mode staked badge — opens AggregateStakeListView,
+            // which shows totals + per-wallet stake sections with a drill-in
+            // to each wallet's StakeListView.
+            if viewModel.stakeSummary.hasStakes {
+                NavigationLink {
+                    AggregateStakeListView()
+                } label: {
+                    StakedBadgeView(summary: viewModel.stakeSummary)
+                }
+                .buttonStyle(.plain)
+            }
 
             aggregateTokenSection(tokens: aggregate.tokens)
         }

@@ -76,25 +76,48 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             do {
                 let container = try SwiftDataStack.makeContainer()
                 let context = ModelContext(container)
+                let rpc = SuiRPCClient()
+                let coinGecko = CoinGeckoClient(modelContext: context)
                 let walletService = WalletService(
                     modelContext: context,
-                    suiNS: SuiNSResolver(rpc: SuiRPCClient(), modelContext: context)
+                    suiNS: SuiNSResolver(rpc: rpc, modelContext: context)
                 )
                 let portfolioService = PortfolioService(
                     modelContext: context,
-                    sui: SuiRPCClient(),
-                    coinGecko: CoinGeckoClient(modelContext: context)
+                    sui: rpc,
+                    coinGecko: coinGecko
                 )
-                let stakingService = StakingService(modelContext: context, sui: SuiRPCClient())
+                let stakingService = StakingService(modelContext: context, sui: rpc)
                 let priceHistory = PriceHistoryService(
                     modelContext: context,
-                    coinGecko: CoinGeckoClient(modelContext: context)
+                    coinGecko: coinGecko
                 )
+                // NFT refresh writes thumbnails into the App Group so the
+                // widget extension can read them without a network round-trip.
+                let thumbnailContainerURL = FileManager.default.containerURL(
+                    forSecurityApplicationGroupIdentifier: AppGroupStore.groupIdentifier
+                ) ?? FileManager.default.temporaryDirectory
+                let nftService = NFTService(
+                    modelContext: context,
+                    sui: rpc,
+                    thumbnails: ThumbnailGenerator(
+                        cache: ImageCache(containerURL: thumbnailContainerURL)
+                    )
+                )
+                let newsService = NewsService(modelContext: context, rss: RSSClient())
+
                 let wallets = (try? walletService.list()) ?? []
                 for wallet in wallets.filter(\.includeInWidget) {
+                    // Strict sequencing within a wallet — portfolio first so
+                    // stakes/NFTs attach to the fresh snapshot.
                     _ = try? await portfolioService.refresh(walletId: wallet.id)
                     _ = try? await stakingService.refresh(walletId: wallet.id)
+                    _ = try? await nftService.refresh(walletId: wallet.id)
                 }
+                // News + price history are wallet-independent — refresh once
+                // after the per-wallet loop. News is what populates the
+                // widget's news rows; without this the widget showed nothing.
+                _ = try? await newsService.refresh(force: false)
                 await priceHistory.refreshAll()
                 WidgetCenter.shared.reloadAllTimelines()
             } catch {

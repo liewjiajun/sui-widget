@@ -46,7 +46,33 @@ struct NewsRowView: View {
         )
     }
 
+    @ViewBuilder
     private var featuredHero: some View {
+        if let imageURL = item.heroImageURL.flatMap(URL.init(string:)) {
+            AsyncImage(url: imageURL, transaction: Transaction(animation: .easeInOut(duration: 0.2))) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 160)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: SuiSpacing.cardRadius - 2, style: .continuous))
+                case .failure:
+                    fallbackHero
+                case .empty:
+                    fallbackHero.overlay(ProgressView().controlSize(.small))
+                @unknown default:
+                    fallbackHero
+                }
+            }
+        } else {
+            fallbackHero
+        }
+    }
+
+    private var fallbackHero: some View {
         RoundedRectangle(cornerRadius: SuiSpacing.cardRadius - 2, style: .continuous)
             .fill(SuiColor.suiBlue.opacity(0.18))
             .frame(height: 140)

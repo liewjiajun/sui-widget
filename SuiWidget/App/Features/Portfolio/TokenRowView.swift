@@ -7,14 +7,8 @@ struct TokenRowView: View {
 
     var body: some View {
         HStack(spacing: SuiSpacing.s3) {
-            ZStack {
-                Circle()
-                    .fill((sliceColor ?? SuiColor.flat).opacity(0.18))
-                Text(initial)
-                    .font(SuiTypography.display(13))
-                    .foregroundStyle(sliceColor ?? SuiColor.flat)
-            }
-            .frame(width: 36, height: 36)
+            avatar
+                .frame(width: 36, height: 36)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(holding.symbol)
@@ -47,6 +41,37 @@ struct TokenRowView: View {
             }
         }
         .padding(.vertical, SuiSpacing.s2)
+    }
+
+    @ViewBuilder
+    private var avatar: some View {
+        if let iconURL = holding.iconURL.flatMap(URL.init(string:)) {
+            AsyncImage(url: iconURL, transaction: Transaction(animation: .easeInOut(duration: 0.15))) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .clipShape(Circle())
+                case .empty, .failure:
+                    initialBadge
+                @unknown default:
+                    initialBadge
+                }
+            }
+        } else {
+            initialBadge
+        }
+    }
+
+    private var initialBadge: some View {
+        ZStack {
+            Circle()
+                .fill((sliceColor ?? SuiColor.flat).opacity(0.18))
+            Text(initial)
+                .font(SuiTypography.display(13))
+                .foregroundStyle(sliceColor ?? SuiColor.flat)
+        }
     }
 
     private var initial: String {

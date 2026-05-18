@@ -65,6 +65,7 @@ public struct NewsService {
                 row.publishedAt = item.publishedAt
                 row.source = item.source
                 row.summary = item.summary
+                row.heroImageURL = item.heroImageURL
             } else {
                 modelContext.insert(CachedNewsItem(
                     id: item.urlHash,
@@ -72,7 +73,8 @@ public struct NewsService {
                     url: item.url,
                     publishedAt: item.publishedAt,
                     source: item.source,
-                    summary: item.summary
+                    summary: item.summary,
+                    heroImageURL: item.heroImageURL
                 ))
             }
         }
