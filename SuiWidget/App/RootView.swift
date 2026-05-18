@@ -4,6 +4,7 @@ import SuiWidgetKit
 
 struct RootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("preferredColorScheme") private var preferredColorSchemeRaw: String = AppTheme.system.rawValue
     @State private var deepLinkDestination: DeepLinkDestination?
     @State private var selectedTab: AppTab = .portfolio
     @State private var showPetComingSoon: Bool = false
@@ -13,6 +14,10 @@ struct RootView: View {
         case nfts
         case news
         case settings
+    }
+
+    private var themeColorScheme: ColorScheme? {
+        AppTheme(rawValue: preferredColorSchemeRaw)?.colorScheme
     }
 
     var body: some View {
@@ -25,6 +30,7 @@ struct RootView: View {
                 })
             }
         }
+        .preferredColorScheme(themeColorScheme)
         .onOpenURL { url in
             guard let destination = DeepLinkRouter.destination(from: url) else { return }
             deepLinkDestination = destination
