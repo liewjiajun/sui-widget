@@ -7,8 +7,16 @@ let package = Package(
     products: [
         .library(name: "SuiWidgetKit", targets: ["SuiWidgetKit"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/nmdias/FeedKit.git", from: "9.1.2"),
+    ],
     targets: [
-        .target(name: "SuiWidgetKit"),
+        .target(
+            name: "SuiWidgetKit",
+            dependencies: [
+                .product(name: "FeedKit", package: "FeedKit"),
+            ]
+        ),
         .testTarget(
             name: "SuiWidgetKitTests",
             dependencies: ["SuiWidgetKit"],
