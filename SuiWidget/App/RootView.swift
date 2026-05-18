@@ -6,6 +6,7 @@ struct RootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @State private var deepLinkDestination: DeepLinkDestination?
     @State private var selectedTab: AppTab = .portfolio
+    @State private var showPetComingSoon: Bool = false
 
     enum AppTab: Hashable {
         case portfolio
@@ -35,8 +36,11 @@ struct RootView: View {
             case .news:
                 selectedTab = .news
             case .petHatch:
-                selectedTab = .portfolio  // pet hatch lives in Portfolio's drill-in for now
+                showPetComingSoon = true
             }
+        }
+        .sheet(isPresented: $showPetComingSoon) {
+            PetComingSoonView()
         }
     }
 
