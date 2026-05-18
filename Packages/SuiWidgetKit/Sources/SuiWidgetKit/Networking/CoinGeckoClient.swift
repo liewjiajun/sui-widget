@@ -131,6 +131,40 @@ public struct CoinGeckoClient {
         }
     }
 
+    /// Historical price chart for a single CoinGecko id. Sui Widget uses this to
+    /// render the 7-day spark chart on TokenDetailView. `days` ≥ 2 selects the
+    /// hourly interval; sub-day requests use the 5-minute interval.
+    public func fetchMarketChart(coingeckoId: String, days: Int = 7) async throws -> CoinGeckoMarketChart {
+        var components = URLComponents(url: Self.baseURL.appendingPathComponent("coins/\(coingeckoId)/market_chart"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "vs_currency", value: "usd"),
+            URLQueryItem(name: "days", value: "\(days)"),
+            URLQueryItem(name: "interval", value: days >= 2 ? "hourly" : "5m"),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+
+        let data: Data
+        let response: HTTPURLResponse
+        do {
+            (data, response) = try await http.send(request)
+        } catch let err as HTTPClientError {
+            if case .exhausted(let status, _) = err, status == 429 {
+                throw CoinGeckoError.rateLimitExceeded
+            }
+            throw CoinGeckoError.http(err)
+        }
+        guard (200...299).contains(response.statusCode) else {
+            throw CoinGeckoError.http(.clientError(response.statusCode))
+        }
+        do {
+            return try JSONDecoder().decode(CoinGeckoMarketChart.self, from: data)
+        } catch {
+            throw CoinGeckoError.decodingFailed(detail: String(describing: error))
+        }
+    }
+
     // MARK: - Internal helpers
 
     private func fetchOrCreateAppSettings() throws -> AppSettings {

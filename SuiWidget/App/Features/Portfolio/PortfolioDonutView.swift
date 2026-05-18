@@ -77,7 +77,13 @@ struct PortfolioDonutView: View {
 
     /// Helper that builds slices from a CachedPortfolio.
     static func slices(from portfolio: CachedPortfolio) -> [Slice] {
-        let tracked = portfolio.tokens.filter { $0.isTracked && ($0.priceUSD ?? 0) > 0 }
+        slices(fromTokens: portfolio.tokens)
+    }
+
+    /// Helper for building slices from any token list — used by the "All
+    /// wallets" aggregate which doesn't have a backing CachedPortfolio.
+    static func slices(fromTokens tokens: [CachedTokenHolding]) -> [Slice] {
+        let tracked = tokens.filter { $0.isTracked && ($0.priceUSD ?? 0) > 0 }
         return tracked.enumerated().map { idx, holding in
             let value = (holding.priceUSD ?? 0) * holding.balance
             return Slice(

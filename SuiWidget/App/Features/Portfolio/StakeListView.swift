@@ -85,7 +85,12 @@ struct StakeListView: View {
                 .padding(.top, SuiSpacing.s2)
             VStack(spacing: SuiSpacing.s2) {
                 ForEach(viewModel.positions, id: \.id) { position in
-                    StakeRowView(position: position)
+                    NavigationLink {
+                        ValidatorDetailView(position: position)
+                    } label: {
+                        StakeRowView(position: position)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             if case .error(let message, _) = viewModel.loadState {
