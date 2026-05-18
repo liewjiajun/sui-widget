@@ -19,7 +19,7 @@ struct RootView: View {
             if hasCompletedOnboarding {
                 tabShell
             } else {
-                OnboardingPlaceholderView(onComplete: {
+                OnboardingCoordinatorView(onComplete: {
                     hasCompletedOnboarding = true
                 })
             }
@@ -75,38 +75,5 @@ struct RootView: View {
             .tag(AppTab.settings)
         }
         .tint(SuiColor.suiBlue)
-    }
-}
-
-/// Placeholder onboarding view used until Task 10 ships the real 3-screen flow.
-/// Just a single button that flips the completion flag so the rest of V1 development
-/// can ignore the onboarding gate.
-struct OnboardingPlaceholderView: View {
-    let onComplete: () -> Void
-
-    var body: some View {
-        VStack(spacing: SuiSpacing.s4) {
-            Spacer()
-            SuiGlyph(size: 96)
-            Text("Sui on your screen.\nAlways.")
-                .font(SuiTypography.display(28))
-                .multilineTextAlignment(.center)
-            Text("Onboarding placeholder — full 3-screen flow lands in Task 10.")
-                .font(SuiTypography.body(12))
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            Spacer()
-            Button(action: onComplete) {
-                Text("Continue ▶")
-                    .font(SuiTypography.body(15, weight: .semibold))
-                    .padding(.horizontal, SuiSpacing.s5)
-                    .padding(.vertical, SuiSpacing.s3)
-                    .background(SuiColor.suiBlue, in: Capsule())
-                    .foregroundStyle(.white)
-            }
-            .padding(.bottom, SuiSpacing.s5)
-        }
-        .padding()
     }
 }
