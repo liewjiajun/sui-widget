@@ -19,12 +19,14 @@ public struct StakedFooter: View {
                     .foregroundStyle(.secondary)
                 Text("\(suiAmount) SUI · \(stakes.positionCount) \(stakes.positionCount == 1 ? "position" : "positions")")
                     .font(SuiTypography.body(11, weight: .semibold))
+                    .contentTransition(.numericText())
             }
             Spacer()
             if let apy = stakes.weightedAPY {
                 Text(String(format: "%.1f%% APY", apy))
                     .font(SuiTypography.mono(11, weight: .bold))
                     .foregroundStyle(SuiColor.up)
+                    .contentTransition(.numericText())
             }
         }
         .padding(.horizontal, 10)

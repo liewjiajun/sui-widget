@@ -7,6 +7,7 @@ struct TokenDetailView: View {
     let holding: CachedTokenHolding
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: TokenDetailViewModel?
+    @State private var chartMaskProgress: CGFloat = 0
 
     var body: some View {
         Group {
@@ -39,9 +40,10 @@ struct TokenDetailView: View {
         VStack(alignment: .leading, spacing: SuiSpacing.s2) {
             Text("YOUR HOLDING").font(SuiTypography.mono(9, weight: .bold)).foregroundStyle(.secondary)
             Text(formattedBalance)
-                .font(SuiTypography.display(28))
+                .font(SuiTypography.pixelDisplay(32))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+                .contentTransition(.numericText())
             if holding.isTracked {
                 Text(formattedUSDValue(viewModel.holdingValueUSD))
                     .font(SuiTypography.display(18))
@@ -113,6 +115,19 @@ struct TokenDetailView: View {
                         AxisValueLabel()
                             .font(SuiTypography.mono(9))
                             .foregroundStyle(.secondary)
+                    }
+                }
+                .mask(
+                    GeometryReader { geo in
+                        Rectangle()
+                            .frame(width: geo.size.width * chartMaskProgress, height: geo.size.height)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                )
+                .onAppear {
+                    chartMaskProgress = 0
+                    withAnimation(.easeOut(duration: 0.32)) {
+                        chartMaskProgress = 1
                     }
                 }
             case .empty(let message):

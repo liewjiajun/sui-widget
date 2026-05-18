@@ -18,7 +18,7 @@ public struct LargeWidgetView: View {
                 PetSlotView()
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 32)
+                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 40)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
                 Spacer()
             }
@@ -35,9 +35,13 @@ public struct LargeWidgetView: View {
                     .lineLimit(2)
             }
             Spacer()
-            Text(refreshLabel).font(SuiTypography.mono(8)).foregroundStyle(.secondary)
+            Text(refreshLabel)
+                .font(SuiTypography.mono(8))
+                .foregroundStyle(.secondary)
+                .contentTransition(.numericText())
         }
         .padding(10)
+        .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }
 
@@ -48,7 +52,9 @@ public struct LargeWidgetView: View {
                 HStack(spacing: 4) {
                     Text(h.symbol).font(SuiTypography.body(11, weight: .bold))
                     Spacer()
-                    Text(usd(h.usdValue)).font(SuiTypography.mono(10))
+                    Text(usd(h.usdValue))
+                        .font(SuiTypography.mono(10))
+                        .contentTransition(.numericText())
                     DeltaGlyph(percent: h.change24h, size: 9)
                 }
             }

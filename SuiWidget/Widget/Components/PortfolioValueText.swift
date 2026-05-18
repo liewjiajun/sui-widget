@@ -14,9 +14,10 @@ public struct PortfolioValueText: View {
 
     public var body: some View {
         Text(formatted)
-            .font(SuiTypography.display(size, weight: .bold))
+            .font(SuiTypography.pixelDisplay(size))
             .lineLimit(1)
             .minimumScaleFactor(0.5)
+            .contentTransition(.numericText())
             .accessibilityLabel("Portfolio total \(formatted)")
     }
 

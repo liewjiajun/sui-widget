@@ -31,9 +31,11 @@ public struct SmallWidgetView: View {
             Text(refreshLabel)
                 .font(SuiTypography.mono(8))
                 .foregroundStyle(.secondary)
+                .contentTransition(.numericText())
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }
 

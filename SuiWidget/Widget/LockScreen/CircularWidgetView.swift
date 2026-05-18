@@ -9,14 +9,18 @@ public struct CircularWidgetView: View {
     public var body: some View {
         let pct = entry.portfolio?.change24hPercent ?? 0
         VStack(spacing: 1) {
-            Text("24H").font(SuiTypography.mono(8, weight: .bold))
+            Text("24H")
+                .font(SuiTypography.pixelDisplay(10))
             Text(deltaGlyph(pct))
-                .font(SuiTypography.display(14, weight: .heavy))
+                .font(SuiTypography.pixelDisplay(18))
+                .contentTransition(.numericText())
             Text(String(format: "%.1f%%", abs(pct)))
-                .font(SuiTypography.mono(10, weight: .bold))
+                .font(SuiTypography.pixelDisplay(13))
+                .contentTransition(.numericText())
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .containerBackground(for: .widget) { Color.clear }
+        .animation(.default, value: entry)
         .accessibilityLabel("Portfolio 24 hours \(pct >= 0 ? "up" : "down") \(String(format: "%.1f", abs(pct))) percent")
     }
 

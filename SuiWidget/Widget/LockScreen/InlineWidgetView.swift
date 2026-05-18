@@ -10,6 +10,9 @@ public struct InlineWidgetView: View {
         let value = entry.portfolio?.totalUSD ?? 0
         let pct = entry.portfolio?.change24hPercent ?? 0
         Text("⬡ SUI \(formatted(value)) \(deltaGlyph(pct)) \(String(format: "%.1f%%", abs(pct)))")
+            .font(SuiTypography.pixelDisplay(15))
+            .contentTransition(.numericText())
+            .animation(.default, value: entry)
             .accessibilityLabel("SUI portfolio \(formatted(value)) \(pct > 0 ? "up" : pct < 0 ? "down" : "flat") \(String(format: "%.1f", abs(pct))) percent")
     }
 

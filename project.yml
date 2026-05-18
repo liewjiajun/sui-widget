@@ -57,6 +57,8 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: "Sui Widget uses the camera to scan QR codes containing Sui wallet addresses."
+        UIAppFonts:
+          - VT323-Regular.ttf
         BGTaskSchedulerPermittedIdentifiers:
           - io.sui.widget.refresh
           - io.sui.widget.cleanup
@@ -67,6 +69,8 @@ targets:
     platform: iOS
     sources:
       - path: SuiWidget/Widget
+      - path: SuiWidget/Resources/Fonts/VT323-Regular.ttf
+        buildPhase: resources
     dependencies:
       - package: SuiWidgetKit
     settings:
@@ -80,6 +84,8 @@ targets:
         CFBundleDisplayName: Sui Widget
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UIAppFonts:
+          - VT323-Regular.ttf
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 

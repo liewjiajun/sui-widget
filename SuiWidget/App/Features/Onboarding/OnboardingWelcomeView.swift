@@ -4,6 +4,9 @@ import SuiWidgetKit
 /// Onboarding page 1 (Welcome). Two stacked mock widget previews + tagline + Continue CTA.
 struct OnboardingWelcomeView: View {
     let onNext: () -> Void
+    /// 0 → 1 cycle drives a ±3pt vertical float on the two stacked widget cards
+    /// (anti-phased so they breathe against each other).
+    @State private var floatPhase: Double = 0
 
     var body: some View {
         VStack(spacing: SuiSpacing.s5) {
@@ -27,7 +30,7 @@ struct OnboardingWelcomeView: View {
                     )
                     .pixelLift()
                     .rotationEffect(.degrees(-4))
-                    .offset(x: -16, y: -16)
+                    .offset(x: -16, y: -16 + floatPhase * 3)
 
                 RoundedRectangle(cornerRadius: SuiSpacing.widgetRadius, style: .continuous)
                     .fill(SuiColor.suiTint.opacity(0.4))
@@ -44,7 +47,7 @@ struct OnboardingWelcomeView: View {
                     )
                     .pixelLift()
                     .rotationEffect(.degrees(3))
-                    .offset(x: 16, y: 16)
+                    .offset(x: 16, y: 16 - floatPhase * 3)
             }
             .frame(height: 200)
 
@@ -72,5 +75,10 @@ struct OnboardingWelcomeView: View {
             .padding(.bottom, 80)  // Leave room for the dots+skip overlay
         }
         .padding()
+        .onAppear {
+            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
+                floatPhase = 1
+            }
+        }
     }
 }

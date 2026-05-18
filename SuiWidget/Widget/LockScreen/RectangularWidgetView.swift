@@ -13,18 +13,22 @@ public struct RectangularWidgetView: View {
             Text("PORTFOLIO").font(SuiTypography.mono(8, weight: .bold))
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(formatted(value))
-                    .font(SuiTypography.display(16, weight: .heavy))
+                    .font(SuiTypography.pixelDisplay(22))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                    .contentTransition(.numericText())
                 Text(deltaGlyph(pct))
-                    .font(SuiTypography.display(11, weight: .heavy))
+                    .font(SuiTypography.pixelDisplay(15))
+                    .contentTransition(.numericText())
                 Text(String(format: "%.1f%%", abs(pct)))
-                    .font(SuiTypography.mono(10, weight: .bold))
+                    .font(SuiTypography.pixelDisplay(14))
+                    .contentTransition(.numericText())
             }
             Text("↻ \(refreshLabel(entry.date))")
                 .font(SuiTypography.mono(8))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .animation(.default, value: entry)
         .accessibilityLabel("Portfolio \(formatted(value)), \(pct >= 0 ? "up" : "down") \(String(format: "%.1f", abs(pct))) percent")
     }
 

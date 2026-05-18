@@ -21,7 +21,10 @@ public struct MediumWidgetView: View {
                 PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 26)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0)
                 Spacer()
-                Text(refreshLabel).font(SuiTypography.mono(8)).foregroundStyle(.secondary)
+                Text(refreshLabel)
+                    .font(SuiTypography.mono(8))
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text("TOKENS").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
@@ -39,6 +42,7 @@ public struct MediumWidgetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
+        .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }
 
@@ -46,7 +50,9 @@ public struct MediumWidgetView: View {
         HStack(spacing: 4) {
             Text(holding.symbol).font(SuiTypography.body(10, weight: .bold))
             Spacer()
-            Text(usd(holding.usdValue)).font(SuiTypography.mono(9))
+            Text(usd(holding.usdValue))
+                .font(SuiTypography.mono(9))
+                .contentTransition(.numericText())
             DeltaGlyph(percent: holding.change24h, size: 9)
         }
     }

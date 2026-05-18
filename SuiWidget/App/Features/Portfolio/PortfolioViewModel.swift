@@ -16,6 +16,9 @@ final class PortfolioViewModel {
     var aggregate: AggregateView?
     var stakeSummary: StakeSummary = .empty
     var refreshError: String?
+    /// Changes to a fresh UUID after every successful refresh so views can observe
+    /// it (via `.onChange`) and pulse a small visual indicator. Nil at app start.
+    var refreshSuccessPulse: UUID?
 
     struct StakeSummary: Equatable {
         var totalUSD: Decimal
@@ -275,6 +278,7 @@ final class PortfolioViewModel {
             // data so its next timeline render reflects the user-visible refresh.
             WidgetCenter.shared.reloadAllTimelines()
             loadState = .loaded
+            refreshSuccessPulse = UUID()
         } catch {
             // Show last cached + error pill.
             loadCachedPortfolio()
@@ -310,6 +314,7 @@ final class PortfolioViewModel {
             }
         } else {
             loadState = .loaded
+            refreshSuccessPulse = UUID()
         }
     }
 

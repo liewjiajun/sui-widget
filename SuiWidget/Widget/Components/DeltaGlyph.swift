@@ -16,9 +16,12 @@ public struct DeltaGlyph: View {
 
     public var body: some View {
         HStack(spacing: 2) {
-            Text(glyph).font(SuiTypography.display(size, weight: .bold))
+            Text(glyph)
+                .font(SuiTypography.pixelDisplay(size))
+                .contentTransition(.numericText())
             Text(String(format: "%.1f%%", abs(percent)))
-                .font(SuiTypography.mono(size, weight: .bold))
+                .font(SuiTypography.pixelDisplay(size))
+                .contentTransition(.numericText())
         }
         .foregroundStyle(useColor ? color : Color.primary)
     }

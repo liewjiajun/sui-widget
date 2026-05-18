@@ -2,7 +2,7 @@ import WidgetKit
 import Foundation
 import SuiWidgetKit
 
-public struct SuiWidgetEntry: TimelineEntry {
+public struct SuiWidgetEntry: TimelineEntry, Equatable {
     public let date: Date
     public let configuration: SuiWidgetConfigurationIntent
     public let wallet: WalletSummary?
@@ -33,6 +33,21 @@ public struct SuiWidgetEntry: TimelineEntry {
         self.topNews = topNews
         self.sparklinePoints = sparklinePoints
         self.isStale = isStale
+    }
+
+    /// Custom Equatable: `configuration` is an AppIntent (SuiWidgetConfigurationIntent)
+    /// which doesn't conform to Equatable, so we exclude it from comparison. SwiftUI
+    /// uses this to crossfade timeline entries on the same widget instance — the
+    /// configuration is fixed per instance anyway.
+    public static func == (lhs: SuiWidgetEntry, rhs: SuiWidgetEntry) -> Bool {
+        lhs.date == rhs.date
+            && lhs.wallet == rhs.wallet
+            && lhs.portfolio == rhs.portfolio
+            && lhs.stakes == rhs.stakes
+            && lhs.topNFTs == rhs.topNFTs
+            && lhs.topNews == rhs.topNews
+            && lhs.sparklinePoints == rhs.sparklinePoints
+            && lhs.isStale == rhs.isStale
     }
 
     public static var preview: SuiWidgetEntry {

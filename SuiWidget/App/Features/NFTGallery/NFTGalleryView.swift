@@ -81,15 +81,34 @@ struct NFTGalleryView: View {
             }
 
             LazyVGrid(columns: columns, spacing: SuiSpacing.s2) {
-                ForEach(collection.nfts, id: \.objectId) { nft in
+                ForEach(Array(collection.nfts.enumerated()), id: \.element.objectId) { offset, nft in
                     NavigationLink {
                         NFTDetailView(nft: nft, onToggleInWidget: { viewModel.toggleNFTInWidget(nft) })
                     } label: {
                         NFTThumbnailView(nft: nft, size: 80)
+                            .modifier(NFTAppearAnimation(delay: Double(offset) * 0.030))
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
+    }
+}
+
+/// Fades + slightly scales thumbnails on appear with a staggered per-item delay.
+/// Keeps the LazyVGrid feel snappy without overpowering the eye on large grids.
+private struct NFTAppearAnimation: ViewModifier {
+    let delay: Double
+    @State private var visible: Bool = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(visible ? 1 : 0)
+            .scaleEffect(visible ? 1 : 0.85)
+            .onAppear {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85).delay(delay)) {
+                    visible = true
+                }
+            }
     }
 }

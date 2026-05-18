@@ -5,12 +5,27 @@ import SuiWidgetKit
 struct PortfolioView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: PortfolioViewModel?
+    /// Toggled briefly to scale the refresh-stamp by 1.05× on a successful
+    /// refresh, driven by PortfolioViewModel.refreshSuccessPulse.
+    @State private var refreshPulse: Bool = false
 
     var body: some View {
         Group {
             if let viewModel {
                 content(viewModel: viewModel)
                     .refreshable { await viewModel.refresh() }
+                    .onChange(of: viewModel.refreshSuccessPulse) { _, _ in
+                        // Quick 1.05× scale-up then back down. Spring is firm so
+                        // the pulse reads but doesn't draw the eye for long.
+                        withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+                            refreshPulse = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                refreshPulse = false
+                            }
+                        }
+                    }
             } else {
                 ProgressView()
                     .onAppear {
@@ -231,7 +246,24 @@ struct PortfolioView: View {
                 Text("24h").font(SuiTypography.mono(10)).foregroundStyle(.secondary)
             }
             .padding(.horizontal, SuiSpacing.s2)
+            // Pull-to-refresh success indicator. Pulses to scale 1.05 for 200ms
+            // each time PortfolioViewModel.refreshSuccessPulse changes.
+            HStack(spacing: SuiSpacing.s1) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(SuiTypography.mono(9))
+                Text("Last sync \(refreshStampText(portfolio.snapshotAt))")
+                    .font(SuiTypography.mono(9))
+            }
+            .foregroundStyle(.secondary)
+            .scaleEffect(refreshPulse ? 1.05 : 1.0)
+            .padding(.top, SuiSpacing.s1)
         }
+    }
+
+    private func refreshStampText(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
     }
 
     @ViewBuilder

@@ -16,7 +16,7 @@ public struct ExtraLargeWidgetView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Spacer()
-                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 28)
+                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 46)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
             }
 
@@ -29,7 +29,9 @@ public struct ExtraLargeWidgetView: View {
                         HStack(spacing: 4) {
                             Text(h.symbol).font(SuiTypography.body(11, weight: .bold))
                             Spacer()
-                            Text(usd(h.usdValue)).font(SuiTypography.mono(10))
+                            Text(usd(h.usdValue))
+                                .font(SuiTypography.mono(10))
+                                .contentTransition(.numericText())
                             DeltaGlyph(percent: h.change24h, size: 9)
                         }
                     }
@@ -74,10 +76,14 @@ public struct ExtraLargeWidgetView: View {
 
             HStack {
                 Spacer()
-                Text(refreshLabel).font(SuiTypography.mono(8)).foregroundStyle(.secondary)
+                Text(refreshLabel)
+                    .font(SuiTypography.mono(8))
+                    .foregroundStyle(.secondary)
+                    .contentTransition(.numericText())
             }
         }
         .padding(12)
+        .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }
 

@@ -59,7 +59,8 @@ struct ValidatorDetailView: View {
             VStack(alignment: .leading, spacing: SuiSpacing.s1) {
                 Text("YOUR STAKE").font(SuiTypography.mono(9, weight: .bold)).foregroundStyle(.secondary)
                 Text("\(formattedSUI(viewModel.principalSUI)) SUI")
-                    .font(SuiTypography.display(26))
+                    .font(SuiTypography.pixelDisplay(32))
+                    .contentTransition(.numericText())
                 if viewModel.rewardSUI > 0 {
                     Text("+ \(formattedSUI(viewModel.rewardSUI)) SUI estimated reward")
                         .font(SuiTypography.mono(11, weight: .bold))

@@ -37,6 +37,14 @@ public enum SuiTypography {
         .system(size: size, weight: weight, design: .default).monospacedDigit()
     }
 
+    /// Pixel-art display font (VT323 — bundled in widget + app targets).
+    /// Use only for hero numerics, deltas, and the SUI inline glyph caption to anchor
+    /// the pixel-art brand. Body text, paragraphs, and labels MUST stay on system fonts
+    /// so Dynamic Type continues to work — pixel font hurts legibility on long-form text.
+    public static func pixelDisplay(_ size: CGFloat) -> Font {
+        .custom("VT323-Regular", size: size)
+    }
+
     /// SF Pro Text. Body copy.
     public static func body(_ size: CGFloat = 13, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .default)

@@ -41,7 +41,8 @@ struct StakeListView: View {
                 .font(SuiTypography.mono(10, weight: .bold))
                 .foregroundStyle(.secondary)
             Text(suiAmountLabel(viewModel.totalStakedSUI))
-                .font(SuiTypography.display(36))
+                .font(SuiTypography.pixelDisplay(36))
+                .contentTransition(.numericText())
             HStack(spacing: SuiSpacing.s2) {
                 if viewModel.totalEstimatedRewardSUI > 0 {
                     Text("+\(suiAmountLabel(viewModel.totalEstimatedRewardSUI)) est. reward")
