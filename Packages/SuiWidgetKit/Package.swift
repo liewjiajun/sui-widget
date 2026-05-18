@@ -9,6 +9,10 @@ let package = Package(
     ],
     targets: [
         .target(name: "SuiWidgetKit"),
-        .testTarget(name: "SuiWidgetKitTests", dependencies: ["SuiWidgetKit"]),
+        .testTarget(
+            name: "SuiWidgetKitTests",
+            dependencies: ["SuiWidgetKit"],
+            resources: [.process("Fixtures")]
+        ),
     ]
 )
