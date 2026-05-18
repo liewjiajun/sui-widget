@@ -3,6 +3,10 @@ import Foundation
 /// `URLProtocol` subclass that intercepts every request issued through a
 /// `URLSession` configured with it. Tests register a handler that maps requests
 /// to canned responses; the handler is consulted serialized on the protocol's queue.
+///
+/// IMPORTANT: handler and requestsObserved are shared global state. Suites that
+/// rely on them must be serialized — either by living inside the same `.serialized`
+/// parent suite (preferred) or by explicit cross-suite coordination.
 final class MockURLProtocol: URLProtocol {
     /// (statusCode, body, optional headers). If `error` is non-nil, the protocol
     /// fails the request with that error instead of returning a response.
