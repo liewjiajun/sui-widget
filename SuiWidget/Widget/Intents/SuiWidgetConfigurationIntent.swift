@@ -33,7 +33,7 @@ public enum WalletScopeOption: String, AppEnum {
     ]
 }
 
-public enum RefreshFrequencyOption: String, AppEnum {
+public enum RefreshFrequencyOption: String, AppEnum, CaseIterable {
     case auto
     case fifteenMinutes
     case thirtyMinutes
@@ -56,7 +56,7 @@ public enum RefreshFrequencyOption: String, AppEnum {
     }
 }
 
-public enum CurrencyOption: String, AppEnum {
+public enum CurrencyOption: String, AppEnum, CaseIterable {
     case usd, sgd, eur, jpy, krw, cny
 
     public static var typeDisplayRepresentation: TypeDisplayRepresentation = "Currency"

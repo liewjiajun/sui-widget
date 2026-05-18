@@ -7,6 +7,6 @@ public struct SuiWidgetBundle: WidgetBundle {
 
     public var body: some Widget {
         SuiWidgetWidget()
-        // Lock Screen widgets get registered in Task 7.
+        SuiLockScreenWidget()
     }
 }

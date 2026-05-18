@@ -12,6 +12,13 @@ struct SettingsView: View {
                     Label("Wallets", systemImage: "wallet.pass")
                 }
             }
+            Section("Widgets") {
+                NavigationLink {
+                    WidgetConfigView()
+                } label: {
+                    Label("Widget configurator", systemImage: "rectangle.3.group")
+                }
+            }
             Section {
                 Text("Display + Data + About land in V1 Task 13.")
                     .font(SuiTypography.body(12))

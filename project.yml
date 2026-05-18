@@ -28,6 +28,12 @@ targets:
     sources:
       - path: SuiWidget/App
       - path: SuiWidget/Resources
+      - path: SuiWidget/Widget
+        excludes:
+          - "SuiWidgetBundle.swift"
+          - "SuiWidgetWidget.swift"
+          - "SuiLockScreenWidget.swift"
+          - "Info.plist"
     dependencies:
       - target: SuiWidgetWidget
       - package: SuiWidgetKit
