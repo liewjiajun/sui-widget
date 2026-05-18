@@ -1,4 +1,5 @@
 import SwiftUI
+import SuiWidgetKit
 
 /// V1 Task 13 fills in the full Settings; this stub exposes Wallets nav reachability now.
 struct SettingsView: View {

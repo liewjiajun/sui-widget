@@ -1,4 +1,5 @@
 import SwiftUI
+import SuiWidgetKit
 
 /// Placeholder. V1 Task 5 fills in NFT gallery with show-in-widget toggle per the Figma design.
 struct NFTGalleryView: View {

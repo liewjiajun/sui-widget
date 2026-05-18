@@ -1,6 +1,135 @@
 import WidgetKit
+import Foundation
+import SuiWidgetKit
 
-struct HandshakeEntry: TimelineEntry {
-    let date: Date
-    let handshakeValue: String
+public struct SuiWidgetEntry: TimelineEntry {
+    public let date: Date
+    public let configuration: SuiWidgetConfigurationIntent
+    public let wallet: WalletSummary?
+    public let portfolio: PortfolioSummary?
+    public let stakes: StakeSummary?
+    public let topNFTs: [NFTSummary]
+    public let topNews: [NewsSummary]
+    public let isStale: Bool
+
+    public init(
+        date: Date = Date(),
+        configuration: SuiWidgetConfigurationIntent,
+        wallet: WalletSummary? = nil,
+        portfolio: PortfolioSummary? = nil,
+        stakes: StakeSummary? = nil,
+        topNFTs: [NFTSummary] = [],
+        topNews: [NewsSummary] = [],
+        isStale: Bool = false
+    ) {
+        self.date = date
+        self.configuration = configuration
+        self.wallet = wallet
+        self.portfolio = portfolio
+        self.stakes = stakes
+        self.topNFTs = topNFTs
+        self.topNews = topNews
+        self.isStale = isStale
+    }
+
+    public static var preview: SuiWidgetEntry {
+        SuiWidgetEntry(
+            configuration: SuiWidgetConfigurationIntent(),
+            wallet: WalletSummary(label: "validator.sui", shortAddress: "0xe6d2…6a8"),
+            portfolio: PortfolioSummary(
+                totalUSD: 2841.50,
+                change24hUSD: 67.20,
+                change24hPercent: 2.4,
+                topHoldings: [
+                    HoldingSummary(symbol: "SUI", balance: 1240.18, usdValue: 1860.27, change24h: 2.4),
+                    HoldingSummary(symbol: "USDC", balance: 500.00, usdValue: 500.00, change24h: 0.0),
+                    HoldingSummary(symbol: "DEEP", balance: 80000, usdValue: 481.23, change24h: -3.1),
+                ]
+            ),
+            stakes: StakeSummary(totalSUI: 408.20, positionCount: 3, weightedAPY: 4.8),
+            topNFTs: [
+                NFTSummary(objectId: "0x1", name: "Suins #1240"),
+                NFTSummary(objectId: "0x2", name: "Suins #842"),
+                NFTSummary(objectId: "0x3", name: "Pixel Frog"),
+                NFTSummary(objectId: "0x4", name: "Mysten OG"),
+            ],
+            topNews: [
+                NewsSummary(title: "Sui Foundation announces…", source: .blog, publishedAt: Date()),
+                NewsSummary(title: "v1.50.0 release", source: .githubRelease, publishedAt: Date()),
+            ],
+            isStale: false
+        )
+    }
+
+    public static var placeholder: SuiWidgetEntry {
+        SuiWidgetEntry(configuration: SuiWidgetConfigurationIntent())
+    }
+}
+
+public struct WalletSummary: Sendable, Equatable {
+    public let label: String
+    public let shortAddress: String
+    public init(label: String, shortAddress: String) {
+        self.label = label
+        self.shortAddress = shortAddress
+    }
+}
+
+public struct PortfolioSummary: Sendable, Equatable {
+    public let totalUSD: Decimal
+    public let change24hUSD: Decimal
+    public let change24hPercent: Double
+    public let topHoldings: [HoldingSummary]
+    public init(totalUSD: Decimal, change24hUSD: Decimal, change24hPercent: Double, topHoldings: [HoldingSummary]) {
+        self.totalUSD = totalUSD
+        self.change24hUSD = change24hUSD
+        self.change24hPercent = change24hPercent
+        self.topHoldings = topHoldings
+    }
+}
+
+public struct HoldingSummary: Sendable, Equatable {
+    public let symbol: String
+    public let balance: Decimal
+    public let usdValue: Decimal
+    public let change24h: Double
+    public init(symbol: String, balance: Decimal, usdValue: Decimal, change24h: Double) {
+        self.symbol = symbol
+        self.balance = balance
+        self.usdValue = usdValue
+        self.change24h = change24h
+    }
+}
+
+public struct StakeSummary: Sendable, Equatable {
+    public let totalSUI: Decimal
+    public let positionCount: Int
+    public let weightedAPY: Double?
+    public init(totalSUI: Decimal, positionCount: Int, weightedAPY: Double?) {
+        self.totalSUI = totalSUI
+        self.positionCount = positionCount
+        self.weightedAPY = weightedAPY
+    }
+}
+
+public struct NFTSummary: Sendable, Equatable, Identifiable {
+    public let objectId: String
+    public let name: String
+    public var id: String { objectId }
+    public init(objectId: String, name: String) {
+        self.objectId = objectId
+        self.name = name
+    }
+}
+
+public struct NewsSummary: Sendable, Equatable, Identifiable {
+    public let title: String
+    public let source: NewsSource
+    public let publishedAt: Date
+    public var id: String { title + "\(publishedAt)" }
+    public init(title: String, source: NewsSource, publishedAt: Date) {
+        self.title = title
+        self.source = source
+        self.publishedAt = publishedAt
+    }
 }

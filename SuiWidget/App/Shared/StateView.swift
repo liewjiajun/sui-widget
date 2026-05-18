@@ -1,4 +1,5 @@
 import SwiftUI
+import SuiWidgetKit
 
 public enum LoadState: Equatable, Sendable {
     case idle

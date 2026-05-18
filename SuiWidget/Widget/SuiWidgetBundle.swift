@@ -1,9 +1,12 @@
-import WidgetKit
 import SwiftUI
+import WidgetKit
 
 @main
-struct SuiWidgetBundle: WidgetBundle {
-    var body: some Widget {
+public struct SuiWidgetBundle: WidgetBundle {
+    public init() {}
+
+    public var body: some Widget {
         SuiWidgetWidget()
+        // Lock Screen widgets get registered in Task 7.
     }
 }

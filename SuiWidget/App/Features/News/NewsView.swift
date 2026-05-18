@@ -1,4 +1,5 @@
 import SwiftUI
+import SuiWidgetKit
 
 /// Placeholder. V1 Task 6 fills in news feed with in-app browser per the Figma design.
 struct NewsView: View {

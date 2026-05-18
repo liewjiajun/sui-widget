@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SuiWidgetKit
 
 struct RootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
