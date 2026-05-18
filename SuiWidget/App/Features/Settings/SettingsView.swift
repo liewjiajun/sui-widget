@@ -1,18 +1,21 @@
 import SwiftUI
 
-/// Placeholder. V1 Task 7 fills in settings per the Figma design.
+/// V1 Task 13 fills in the full Settings; this stub exposes Wallets nav reachability now.
 struct SettingsView: View {
     var body: some View {
-        ScrollView {
-            VStack(spacing: SuiSpacing.s4) {
-                SuiGlyph(size: 64)
-                Text("Settings")
-                    .font(SuiTypography.display(28))
-                Text("Settings UI lands in V1 Task 7")
-                    .font(SuiTypography.body(13))
+        Form {
+            Section("Account") {
+                NavigationLink {
+                    WalletListView()
+                } label: {
+                    Label("Wallets", systemImage: "wallet.pass")
+                }
+            }
+            Section {
+                Text("Display + Data + About land in V1 Task 13.")
+                    .font(SuiTypography.body(12))
                     .foregroundStyle(.secondary)
             }
-            .padding()
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.large)
