@@ -105,3 +105,22 @@ curl -s 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=sui,
   > "$FIX_DIR/coingecko-coins-markets-multi.json"
 ```
 
+## RSS / Atom fixtures (recorded 2026-05-18)
+
+- `rss-sui-blog.xml` — `https://blog.sui.io/rss/` (RSS 2.0 from the Ghost-hosted Sui blog; the canonical `/rss.xml` returns 404, so we hit `/rss/`)
+- `rss-mysten-releases.atom` — `https://github.com/MystenLabs/sui/releases.atom` (GitHub releases Atom feed)
+
+**Recording commands (executed verbatim):**
+
+```bash
+FIX_DIR="Packages/SuiWidgetKit/Tests/SuiWidgetKitTests/Fixtures"
+
+curl -sL "https://blog.sui.io/rss/" \
+  -H 'User-Agent: SuiWidgetIntegrationTest/0.1' \
+  > "$FIX_DIR/rss-sui-blog.xml"
+
+curl -sL "https://github.com/MystenLabs/sui/releases.atom" \
+  -H 'User-Agent: SuiWidgetIntegrationTest/0.1' \
+  > "$FIX_DIR/rss-mysten-releases.atom"
+```
+

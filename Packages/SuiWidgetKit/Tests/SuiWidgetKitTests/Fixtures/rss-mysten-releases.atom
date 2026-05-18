@@ -1,0 +1,268 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="en-US">
+  <id>tag:github.com,2008:https://github.com/MystenLabs/sui/releases</id>
+  <link type="text/html" rel="alternate" href="https://github.com/MystenLabs/sui/releases"/>
+  <link type="application/atom+xml" rel="self" href="https://github.com/MystenLabs/sui/releases.atom"/>
+  <title>Release notes from sui</title>
+  <updated>2026-05-17T19:12:10Z</updated>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.72.2_1779055433_release</id>
+    <updated>2026-05-17T19:12:10Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.72.2_1779055433_release"/>
+    <title>sui_v1.72.2_1779055433_release: rpc: map simulate user errors to invalid argument (#26560) (#26675)</title>
+    <content type="html">&lt;p&gt;(cherry picked from commit &lt;a class=&quot;commit-link&quot; data-hovercard-type=&quot;commit&quot; data-hovercard-url=&quot;https://github.com/MystenLabs/sui/commit/6a45d72942b2d32a9e2b519d028e575a38e25904/hovercard&quot; href=&quot;https://github.com/MystenLabs/sui/commit/6a45d72942b2d32a9e2b519d028e575a38e25904&quot;&gt;&lt;tt&gt;6a45d72&lt;/tt&gt;&lt;/a&gt;)&lt;/p&gt;</content>
+    <author>
+      <name>bmwill</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/6741899?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778907891_ci</id>
+    <updated>2026-05-16T00:50:51Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778907891_ci"/>
+    <title>sui_v1.73.0_1778907891_ci: sui-types: convert ValidDuring TransactionExpiration from proto (#26670)</title>
+    <content type="html">&lt;p&gt;Previously, &lt;code&gt;TryFrom&amp;lt;&amp;amp;proto::TransactionExpiration&amp;gt;&lt;/code&gt; rejected the&lt;br&gt;
+&lt;code&gt;ValidDuring&lt;/code&gt; variant with an &quot;unknown TransactionExpirationKind&quot; error,&lt;br&gt;
+so callers that supplied a &lt;code&gt;ValidDuring&lt;/code&gt; expiration to gRPC endpoints&lt;br&gt;
+like &lt;code&gt;SimulateTransaction&lt;/code&gt; were unable to use it even though the forward&lt;br&gt;
+conversion already encoded the variant.&lt;/p&gt;
+&lt;p&gt;With this commit, the &lt;code&gt;TryFrom&lt;/code&gt; decodes &lt;code&gt;ValidDuring&lt;/code&gt; by parsing the&lt;br&gt;
+&lt;code&gt;chain&lt;/code&gt; field back into a &lt;code&gt;ChainIdentifier&lt;/code&gt;, decoding the optional&lt;br&gt;
+timestamps via a new &lt;code&gt;timestamp_to_ms&lt;/code&gt; helper, and requiring both&lt;br&gt;
+&lt;code&gt;chain&lt;/code&gt; and &lt;code&gt;nonce&lt;/code&gt; to be present. Also add e2e tests next to the&lt;br&gt;
+simulate/resolve tests: a round-trip test over the conversion and a&lt;br&gt;
+sim_test that supplies an explicit &lt;code&gt;ValidDuring&lt;/code&gt; expiration to&lt;br&gt;
+&lt;code&gt;SimulateTransaction&lt;/code&gt; and verifies the resolved transaction preserves&lt;br&gt;
+&lt;code&gt;epoch&lt;/code&gt;, &lt;code&gt;min_epoch&lt;/code&gt;, &lt;code&gt;chain&lt;/code&gt;, and &lt;code&gt;nonce&lt;/code&gt; both in the proto response&lt;br&gt;
+and after BCS deserialization to &lt;code&gt;TransactionData&lt;/code&gt;.&lt;/p&gt;</content>
+    <author>
+      <name>bmwill</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/6741899?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778884533_ci</id>
+    <updated>2026-05-15T21:19:04Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778884533_ci"/>
+    <title>sui_v1.73.0_1778884533_ci: [easy][adapter] Remove a bunch of old dead code (#26668)</title>
+    <content type="html">&lt;h2&gt;Description&lt;/h2&gt;
+&lt;p&gt;Was dead and no longer used. So remove it.&lt;/p&gt;
+&lt;h2&gt;Test plan&lt;/h2&gt;
+&lt;p&gt;It was dead code.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;Release notes&lt;/h2&gt;
+&lt;p&gt;Check each box that your changes affect. If none of the boxes relate to&lt;br&gt;
+your changes, release notes aren&#39;t required.&lt;/p&gt;
+&lt;p&gt;For each box you select, include information after the relevant heading&lt;br&gt;
+that describes the impact of your changes that a user might notice and&lt;br&gt;
+any actions they must take to implement updates.&lt;/p&gt;
+&lt;ul class=&quot;contains-task-list&quot;&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Protocol:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Nodes (Validators and Full nodes):&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; gRPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; JSON-RPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; GraphQL:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; CLI:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Rust SDK:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Indexing Framework:&lt;/li&gt;
+&lt;/ul&gt;</content>
+    <author>
+      <name>tzakian</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/2895723?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778851689_ci</id>
+    <updated>2026-05-15T12:16:47Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778851689_ci"/>
+    <title>sui_v1.73.0_1778851689_ci: [move][move-decompiler] Emit loop bodies in reverse post-order (#26644)</title>
+    <content type="html">&lt;h2&gt;Description&lt;/h2&gt;
+&lt;p&gt;Today, &lt;code&gt;insert_breaks&lt;/code&gt; has a &lt;code&gt;LatchKind::InLoop&lt;/code&gt; case that drops a&lt;br&gt;
+&lt;code&gt;Jump&lt;/code&gt; on the assumption that its target is the next sibling in the&lt;br&gt;
+emitted Seq. With sort-by-NodeIndex, that&#39;s true only because&lt;br&gt;
+&lt;code&gt;move_stackless_bytecode_2&lt;/code&gt; happens to lay blocks out in CFG-flow order.&lt;br&gt;
+Nothing asserts that invariant. If upstream ever does something&lt;br&gt;
+different, sort-order could disagree with CFG-flow and the &lt;code&gt;Jump&lt;/code&gt; drop&lt;br&gt;
+would silently produce wrong fall-through. Instead, we reverse&lt;br&gt;
+post-order traverse the &lt;code&gt;loop_nodes&lt;/code&gt; to ensure the correct order: the&lt;br&gt;
+IfElse&#39;s post-dom is genuinely the next sibling regardless of how blocks&lt;br&gt;
+are numbered.&lt;/p&gt;
+&lt;h2&gt;Test plan&lt;/h2&gt;
+&lt;p&gt;All 52 snapshot tests pass. Zero snapshot drift — confirms RPO and&lt;br&gt;
+sort-order agree on the current corpus, which is the predicted outcome.&lt;br&gt;
+The change buys robustness if upstream ever renumbers blocks.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;Release notes&lt;/h2&gt;
+&lt;p&gt;Check each box that your changes affect. If none of the boxes relate to&lt;br&gt;
+your changes, release notes aren&#39;t required.&lt;/p&gt;
+&lt;p&gt;For each box you select, include information after the relevant heading&lt;br&gt;
+that describes the impact of your changes that a user might notice and&lt;br&gt;
+any actions they must take to implement updates.&lt;/p&gt;
+&lt;ul class=&quot;contains-task-list&quot;&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Protocol:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Nodes (Validators and Full nodes):&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; gRPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; JSON-RPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; GraphQL:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; CLI:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Rust SDK:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Indexing Framework:&lt;/li&gt;
+&lt;/ul&gt;</content>
+    <author>
+      <name>cgswords</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/1130991?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778807758_ci</id>
+    <updated>2026-05-15T00:01:37Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778807758_ci"/>
+    <title>sui_v1.73.0_1778807758_ci: kv rpc: add bitmap query APIs (#26587)</title>
+    <content type="html">&lt;h2&gt;Description&lt;/h2&gt;
+&lt;p&gt;This implements the grpc query apis for archival.&lt;br&gt;
+This won&#39;t build until&lt;br&gt;
+&lt;a class=&quot;issue-link js-issue-link&quot; data-error-text=&quot;Failed to load title&quot; data-id=&quot;4425125489&quot; data-permission-text=&quot;Title is private&quot; data-url=&quot;https://github.com/MystenLabs/sui-rust-sdk/issues/256&quot; data-hovercard-type=&quot;pull_request&quot; data-hovercard-url=&quot;/MystenLabs/sui-rust-sdk/pull/256/hovercard&quot; href=&quot;https://github.com/MystenLabs/sui-rust-sdk/pull/256&quot;&gt;MystenLabs/sui-rust-sdk#256&lt;/a&gt; lands.&lt;/p&gt;
+&lt;hr&gt;
+&lt;p&gt;Co-authored-by: Brandon Williams &lt;a href=&quot;mailto:brandon@mystenlabs.com&quot;&gt;brandon@mystenlabs.com&lt;/a&gt;&lt;br&gt;
+Co-authored-by: Claude Opus 4.7 (1M context) &lt;a href=&quot;mailto:noreply@anthropic.com&quot;&gt;noreply@anthropic.com&lt;/a&gt;&lt;/p&gt;</content>
+    <author>
+      <name>nickvikeras</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/1908006?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.72.2_1778872117_release</id>
+    <updated>2026-05-15T17:31:52Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.72.2_1778872117_release"/>
+    <title>sui_v1.72.2_1778872117_release</title>
+    <content type="html">&lt;p&gt;[json-rpc] Refactor dev-inspect and dry-run to use the same backend `…&lt;/p&gt;</content>
+    <author>
+      <name>tzakian</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/2895723?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778797046_ci</id>
+    <updated>2026-05-14T21:13:22Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778797046_ci"/>
+    <title>sui_v1.73.0_1778797046_ci</title>
+    <content type="html">&lt;p&gt;[move][move-decompiler] Fix let-declaration hoisting and fuse split l…&lt;/p&gt;</content>
+    <author>
+      <name>cgswords</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/1130991?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778787005_ci</id>
+    <updated>2026-05-14T16:28:58Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778787005_ci"/>
+    <title>sui_v1.73.0_1778787005_ci: Remove text that states gas is paid out of address balances (#26645)</title>
+    <content type="html">&lt;h2&gt;Description&lt;/h2&gt;
+&lt;p&gt;Minor docs edit&lt;/p&gt;
+&lt;h2&gt;Test plan&lt;/h2&gt;
+&lt;p&gt;N/A&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;Release notes&lt;/h2&gt;
+&lt;p&gt;Check each box that your changes affect. If none of the boxes relate to&lt;br&gt;
+your changes, release notes aren&#39;t required.&lt;/p&gt;
+&lt;p&gt;For each box you select, include information after the relevant heading&lt;br&gt;
+that describes the impact of your changes that a user might notice and&lt;br&gt;
+any actions they must take to implement updates.&lt;/p&gt;
+&lt;ul class=&quot;contains-task-list&quot;&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Protocol:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Nodes (Validators and Full nodes):&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; gRPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; JSON-RPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; GraphQL:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; CLI:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Rust SDK:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Indexing Framework:&lt;/li&gt;
+&lt;/ul&gt;</content>
+    <author>
+      <name>janetwu11</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/104783993?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778776992_ci</id>
+    <updated>2026-05-14T13:50:03Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778776992_ci"/>
+    <title>sui_v1.73.0_1778776992_ci: docs: fix details dropdown arrow and expand animation (#26624)</title>
+    <content type="html">&lt;h2&gt;Summary&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Removed custom arrow pill (&lt;code&gt;→&lt;/code&gt; in blue rounded square) that conflicted&lt;br&gt;
+with Docusaurus&#39;s built-in border-triangle chevron&lt;/li&gt;
+&lt;li&gt;Removed &lt;code&gt;slideDown&lt;/code&gt; keyframe animation that fought Docusaurus&#39;s&lt;br&gt;
+&lt;code&gt;Collapsible&lt;/code&gt; height animation, causing a visible upward shift at end of&lt;br&gt;
+expand&lt;/li&gt;
+&lt;li&gt;Changed container &lt;code&gt;transition: all&lt;/code&gt; to only animate &lt;code&gt;border-color&lt;/code&gt; and&lt;br&gt;
+&lt;code&gt;box-shadow&lt;/code&gt; (not layout properties)&lt;/li&gt;
+&lt;li&gt;Removed instant &lt;code&gt;margin-bottom&lt;/code&gt;/&lt;code&gt;padding-bottom&lt;/code&gt;/&lt;code&gt;border-bottom&lt;/code&gt; on&lt;br&gt;
+open summary that caused layout shift during expand&lt;/li&gt;
+&lt;li&gt;Set arrow color via &lt;code&gt;--docusaurus-details-decoration-color&lt;/code&gt; CSS&lt;br&gt;
+variable for both light and dark mode&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Test plan&lt;/h2&gt;
+&lt;ul class=&quot;contains-task-list&quot;&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Open a page with &lt;code&gt;&amp;lt;details&amp;gt;&lt;/code&gt; dropdowns (e.g., any reference page)&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Verify arrow is visible and rotates smoothly on open/close&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Verify expand animation is seamless with no upward shift&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Check both light and dark mode&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;🤖 Generated with &lt;a href=&quot;https://claude.com/claude-code&quot; rel=&quot;nofollow&quot;&gt;Claude Code&lt;/a&gt;&lt;/p&gt;
+&lt;hr&gt;
+&lt;p&gt;Co-authored-by: Claude Opus 4.6 (1M context) &lt;a href=&quot;mailto:noreply@anthropic.com&quot;&gt;noreply@anthropic.com&lt;/a&gt;&lt;/p&gt;</content>
+    <author>
+      <name>jessiemongeon1</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/133128541?s=60&amp;v=4"/>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/426075845/sui_v1.73.0_1778755228_ci</id>
+    <updated>2026-05-14T08:48:41Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/MystenLabs/sui/releases/tag/sui_v1.73.0_1778755228_ci"/>
+    <title>sui_v1.73.0_1778755228_ci: [decompiler] Total post-dominators over divergent regions (#26615)</title>
+    <content type="html">&lt;h2&gt;Description&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;structure_acyclic_region&lt;/code&gt; asks petgraph for the immediate&lt;br&gt;
+post-dominator of a node and unwraps it. petgraph&#39;s &lt;code&gt;simple_fast&lt;/code&gt; leaves&lt;br&gt;
+&lt;code&gt;immediate_dominator&lt;/code&gt; undefined for any node not reachable from the&lt;br&gt;
+dominator-tree root — and in the reversed CFG rooted at &lt;code&gt;return_&lt;/code&gt;,&lt;br&gt;
+that&#39;s exactly the input nodes that never reach a sink in the original&lt;br&gt;
+(infinite loops with no exit, abort-only regions).&lt;/p&gt;
+&lt;p&gt;This make post-domination total over the input by adding &lt;em&gt;impossible&lt;br&gt;
+edges&lt;/em&gt;: after wiring &lt;code&gt;return_&lt;/code&gt; to original sinks, compute SCCs of the&lt;br&gt;
+original CFG and, for each terminal SCC (one whose outgoing edges all&lt;br&gt;
+stay inside the SCC), add &lt;code&gt;return_&lt;/code&gt; -&amp;gt; highest-rank-input-node-in-SCC.&lt;br&gt;
+Singleton-sink SCCs slip through the check vacuously and get a redundant&lt;br&gt;
+edge, but simple_fast handles the duplicate fine.&lt;/p&gt;
+&lt;h2&gt;Test plan&lt;/h2&gt;
+&lt;p&gt;Adds three structuring unit tests for the shapes that exercised the fix&lt;br&gt;
+(lone self-loop; if/else that converges and then falls into a trailing&lt;br&gt;
+infinite loop; if/else whose two arms each fall into a separate infinite&lt;br&gt;
+loop, producing two disjoint terminal SCCs).&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;Release notes&lt;/h2&gt;
+&lt;p&gt;Check each box that your changes affect. If none of the boxes relate to&lt;br&gt;
+your changes, release notes aren&#39;t required.&lt;/p&gt;
+&lt;p&gt;For each box you select, include information after the relevant heading&lt;br&gt;
+that describes the impact of your changes that a user might notice and&lt;br&gt;
+any actions they must take to implement updates.&lt;/p&gt;
+&lt;ul class=&quot;contains-task-list&quot;&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Protocol:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Nodes (Validators and Full nodes):&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; gRPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; JSON-RPC:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; GraphQL:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; CLI:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Rust SDK:&lt;/li&gt;
+&lt;li class=&quot;task-list-item&quot;&gt;&lt;input type=&quot;checkbox&quot; id=&quot;&quot; disabled=&quot;&quot; class=&quot;task-list-item-checkbox&quot; aria-label=&quot;Incomplete task&quot;&gt; Indexing Framework:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;p&gt;Co-authored-by: Sam Blackshear &lt;a href=&quot;mailto:sam@mystenlabs.com&quot;&gt;sam@mystenlabs.com&lt;/a&gt;&lt;br&gt;
+Co-authored-by: Claude Sonnet 4.5 &lt;a href=&quot;mailto:noreply@anthropic.com&quot;&gt;noreply@anthropic.com&lt;/a&gt;&lt;/p&gt;</content>
+    <author>
+      <name>cgswords</name>
+    </author>
+    <media:thumbnail height="30" width="30" url="https://avatars.githubusercontent.com/u/1130991?s=60&amp;v=4"/>
+  </entry>
+</feed>
