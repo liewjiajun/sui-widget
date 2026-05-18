@@ -7,11 +7,16 @@ import Foundation
 /// 5 minutes elapse since the last failure for that endpoint.
 public actor RPCEndpointRotator {
 
-    /// CLAUDE.md-locked Sui mainnet endpoints. Order is the failover preference.
+    /// Sui mainnet RPC endpoints in failover order. Originally three locked endpoints
+    /// per CLAUDE.md ("fullnode.mainnet.sui.io", "sui-mainnet.public.blastapi.io",
+    /// "sui-mainnet-rpc.allthatnode.com"), but two of those went offline in 2026:
+    /// allthatnode no longer resolves and blastapi now requires an API key (403).
+    /// Replaced with two free public alternatives that accept the same JSON-RPC
+    /// methods we use: PublicNode and OnFinality.
     public static let mainnetEndpoints: [URL] = [
         URL(string: "https://fullnode.mainnet.sui.io:443")!,
-        URL(string: "https://sui-mainnet.public.blastapi.io")!,
-        URL(string: "https://sui-mainnet-rpc.allthatnode.com")!,
+        URL(string: "https://sui-rpc.publicnode.com")!,
+        URL(string: "https://sui.api.onfinality.io/public")!,
     ]
 
     /// Failures within this rolling window count against an endpoint.

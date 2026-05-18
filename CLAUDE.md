@@ -237,9 +237,9 @@ final class Quest {
 
 ```swift
 let endpoints = [
-    "https://fullnode.mainnet.sui.io:443",
-    "https://sui-mainnet.public.blastapi.io",
-    "https://sui-mainnet-rpc.allthatnode.com",
+    "https://fullnode.mainnet.sui.io:443",   // Mysten official
+    "https://sui-rpc.publicnode.com",        // PublicNode (replaced blastapi which went paid)
+    "https://sui.api.onfinality.io/public",  // OnFinality (replaced allthatnode which shut down DNS)
 ]
 ```
 
