@@ -79,11 +79,13 @@ final class PortfolioViewModel {
         }
     }
 
-    nonisolated deinit {
-        if let token = refreshFrequencyObserver {
-            NotificationCenter.default.removeObserver(token)
-        }
-    }
+    // NB: no `deinit` here. The view-model is held by the Portfolio tab's NavigationStack
+    // for the duration of the app; when its View disappears, [weak self] in the
+    // NotificationCenter observer + foregroundTimer closures makes any leftover
+    // callbacks no-ops, so we don't leak meaningful work. Swift's `nonisolated deinit`
+    // syntax requires the IsolatedDeinit experimental flag (not available on CI's
+    // Xcode 16), so we skip the explicit cleanup. NotificationCenter retains a weak
+    // reference once the token is gone, and the Timer's [weak self] closure no-ops.
 
     func loadInitial() {
         do {

@@ -36,10 +36,9 @@ extension MockURLProtocolSuite {
 
         @Test func retries_on_429_then_succeeds() async throws {
             MockURLProtocol.reset()
-            var responses: [Int] = [429, 429, 200]
+            let queue = ResponseQueue(responses: [429, 429, 200])
             MockURLProtocol.handler = { _ in
-                let status = responses.removeFirst()
-                return (status, Data("retry-body".utf8), [:], nil)
+                (queue.next(), Data("retry-body".utf8), [:], nil)
             }
 
             let client = makeClient()
@@ -52,8 +51,8 @@ extension MockURLProtocolSuite {
 
         @Test func retries_on_5xx_then_succeeds() async throws {
             MockURLProtocol.reset()
-            var responses: [Int] = [503, 200]
-            MockURLProtocol.handler = { _ in (responses.removeFirst(), Data(), [:], nil) }
+            let queue = ResponseQueue(responses: [503, 200])
+            MockURLProtocol.handler = { _ in (queue.next(), Data(), [:], nil) }
 
             let client = makeClient()
             let (_, response) = try await client.send(URLRequest(url: URL(string: "https://example.com/")!))
@@ -96,10 +95,10 @@ extension MockURLProtocolSuite {
 
         @Test func retries_on_timed_out_url_error() async throws {
             MockURLProtocol.reset()
-            var attempt = 0
+            let counter = AttemptCounter()
             MockURLProtocol.handler = { _ in
-                attempt += 1
-                if attempt < 3 {
+                let n = counter.increment()
+                if n < 3 {
                     return (0, Data(), [:], URLError(.timedOut))
                 }
                 return (200, Data("ok".utf8), [:], nil)
@@ -124,5 +123,31 @@ extension MockURLProtocolSuite {
                 #expect(MockURLProtocol.requestsObserved.count == 1)
             }
         }
+    }
+}
+
+// MARK: - Test helpers (Swift 6 friendly mutable state for handler closures)
+
+/// Thread-safe FIFO queue of stubbed HTTP response codes. Backed by an NSLock so
+/// the handler closure (run on URLSession's background queue) can safely pop the
+/// next response without triggering Swift 6 concurrency diagnostics.
+final class ResponseQueue: @unchecked Sendable {
+    private let lock = NSLock()
+    private var responses: [Int]
+    init(responses: [Int]) { self.responses = responses }
+    func next() -> Int {
+        lock.lock(); defer { lock.unlock() }
+        return responses.removeFirst()
+    }
+}
+
+/// Monotonically increasing attempt counter used to script multi-pass test handlers.
+final class AttemptCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Int = 0
+    func increment() -> Int {
+        lock.lock(); defer { lock.unlock() }
+        value += 1
+        return value
     }
 }
