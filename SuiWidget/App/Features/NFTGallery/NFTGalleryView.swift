@@ -19,14 +19,21 @@ struct NFTGalleryView: View {
                     .refreshable { await viewModel.refresh() }
             } else {
                 ProgressView()
-                    .onAppear {
-                        viewModel = NFTGalleryViewModel(modelContext: modelContext)
-                        viewModel?.load()
-                    }
             }
         }
         .navigationTitle("NFTs")
         .navigationBarTitleDisplayMode(.large)
+        // The `.onAppear` lives on the outer Group so it fires every time the
+        // tab becomes visible (not just on first creation). `load()` is
+        // idempotent — it re-fetches the wallet list and re-groups the cached
+        // NFTs, so adding a wallet in Settings → Wallets shows up here without
+        // a relaunch.
+        .onAppear {
+            if viewModel == nil {
+                viewModel = NFTGalleryViewModel(modelContext: modelContext)
+            }
+            viewModel?.load()
+        }
     }
 
     @ViewBuilder

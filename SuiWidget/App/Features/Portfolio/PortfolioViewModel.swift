@@ -109,6 +109,32 @@ final class PortfolioViewModel {
         }
     }
 
+    /// Re-runs wallet list fetch + cached data load. Called from `.onAppear` so that
+    /// adding/removing wallets in Settings is reflected when the user returns to the
+    /// Portfolio tab. Does NOT restart the foreground timer (`loadInitial` owns that)
+    /// and only reloads cached state if the wallet set actually changed.
+    func refreshOnAppear() {
+        do {
+            let updatedWallets = try walletService.list()
+            let walletsChanged = updatedWallets.map(\.id) != wallets.map(\.id)
+            wallets = updatedWallets
+            if walletsChanged {
+                if selectedWalletId == nil || !updatedWallets.contains(where: { $0.id == selectedWalletId }) {
+                    selectedWalletId = updatedWallets.first(where: \.isPrimary)?.id ?? updatedWallets.first?.id
+                }
+                if selectedWalletId == nil {
+                    loadCachedAggregate()
+                    loadAggregateStakes()
+                } else {
+                    loadCachedPortfolio()
+                    loadCachedStakes()
+                }
+            }
+        } catch {
+            // Best-effort — silently keep stale wallet list rather than disrupt the UI.
+        }
+    }
+
     /// Re-arms a recurring Timer that triggers a `refresh()` after every
     /// `AppSettings.refreshFrequencyMinutes` minutes the app stays in the
     /// foreground. Cleared and re-armed on each call so a settings change

@@ -28,10 +28,6 @@ struct PortfolioView: View {
                     }
             } else {
                 ProgressView()
-                    .onAppear {
-                        viewModel = PortfolioViewModel(modelContext: modelContext)
-                        viewModel?.loadInitial()
-                    }
             }
         }
         .navigationTitle("Portfolio")
@@ -41,6 +37,18 @@ struct PortfolioView: View {
                 if let viewModel, !viewModel.wallets.isEmpty {
                     walletPicker(viewModel: viewModel)
                 }
+            }
+        }
+        // The `.onAppear` lives on the outer Group so it fires every time the
+        // tab becomes visible (not just on first creation). This is how
+        // wallets added via Settings → Wallets appear in Portfolio without
+        // requiring a relaunch.
+        .onAppear {
+            if viewModel == nil {
+                viewModel = PortfolioViewModel(modelContext: modelContext)
+                viewModel?.loadInitial()
+            } else {
+                viewModel?.refreshOnAppear()
             }
         }
     }
