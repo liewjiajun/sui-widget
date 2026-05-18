@@ -79,3 +79,29 @@ curl -s -X POST "$NODE" -H 'content-type: application/json' \
   > "$FIX_DIR/sui-resolveNameServiceNames-success.json"
 ```
 
+## CoinGecko fixtures (recorded 2026-05-18)
+
+- `coingecko-coins-list-sui-platform.json` — `/coins/list?include_platform=true` filtered down to entries where `platforms.sui` is set (kept 165 entries from the ~17.4k full list)
+- `coingecko-coins-markets-multi.json` — `/coins/markets?vs_currency=usd&ids=sui,usd-coin,tether` (3 entries: tether, usd-coin, sui)
+
+**Recording commands (executed verbatim):**
+
+```bash
+FIX_DIR="Packages/SuiWidgetKit/Tests/SuiWidgetKitTests/Fixtures"
+
+# Coin list — large response (~2.6 MB). Filter down to Sui-platform entries only.
+curl -s 'https://api.coingecko.com/api/v3/coins/list?include_platform=true' \
+  > "$FIX_DIR/coingecko-coins-list-raw.json"
+python3 - "$FIX_DIR/coingecko-coins-list-raw.json" "$FIX_DIR/coingecko-coins-list-sui-platform.json" <<'PY'
+import json, sys
+raw = json.load(open(sys.argv[1]))
+filtered = [c for c in raw if isinstance(c.get("platforms"), dict) and c["platforms"].get("sui")]
+json.dump(filtered, open(sys.argv[2], "w"), indent=2)
+PY
+rm "$FIX_DIR/coingecko-coins-list-raw.json"
+
+# Multi-coin market snapshot.
+curl -s 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=sui,usd-coin,tether' \
+  > "$FIX_DIR/coingecko-coins-markets-multi.json"
+```
+
