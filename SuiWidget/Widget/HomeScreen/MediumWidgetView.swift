@@ -20,6 +20,11 @@ public struct MediumWidgetView: View {
                 }
                 PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 26)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0)
+                PixelSparkline(
+                    points: entry.sparklinePoints.map { ($0 as NSDecimalNumber).doubleValue },
+                    color: suiDeltaColor(entry.portfolio?.change24hPercent ?? 0)
+                )
+                .frame(height: 18)
                 Spacer()
                 Text(refreshLabel)
                     .font(SuiTypography.mono(8))

@@ -25,7 +25,7 @@ public struct SmallWidgetView: View {
             DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0)
             PixelSparkline(
                 points: entry.sparklinePoints.map { ($0 as NSDecimalNumber).doubleValue },
-                color: deltaColor(entry.portfolio?.change24hPercent ?? 0)
+                color: suiDeltaColor(entry.portfolio?.change24hPercent ?? 0)
             )
             .frame(height: 16)
             Text(refreshLabel)
@@ -44,9 +44,5 @@ public struct SmallWidgetView: View {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
         return "↻ \(f.string(from: entry.date))"
-    }
-
-    private func deltaColor(_ d: Double) -> Color {
-        d > 0 ? SuiColor.up : (d < 0 ? SuiColor.down : SuiColor.flat)
     }
 }

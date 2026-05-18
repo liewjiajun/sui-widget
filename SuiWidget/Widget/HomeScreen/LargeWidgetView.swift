@@ -22,6 +22,11 @@ public struct LargeWidgetView: View {
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
                 Spacer()
             }
+            PixelSparkline(
+                points: entry.sparklinePoints.map { ($0 as NSDecimalNumber).doubleValue },
+                color: suiDeltaColor(entry.portfolio?.change24hPercent ?? 0)
+            )
+            .frame(height: 28)
             Divider()
             tokensRow
             Spacer().frame(height: 4)

@@ -20,6 +20,12 @@ public struct ExtraLargeWidgetView: View {
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
             }
 
+            PixelSparkline(
+                points: entry.sparklinePoints.map { ($0 as NSDecimalNumber).doubleValue },
+                color: suiDeltaColor(entry.portfolio?.change24hPercent ?? 0)
+            )
+            .frame(height: 32)
+
             Divider()
 
             // 3-column dashboard
