@@ -24,11 +24,16 @@ public struct WalletService {
         let address = try await suiNS.resolve(input)
         let existing = try list()
         let isFirst = existing.isEmpty
+        // If the user typed a name (.sui or @prefix) store it as-is. Otherwise
+        // they pasted a 0x address — do a best-effort reverse SuiNS lookup so
+        // the widget's "SuiNS name" display option has something to show. The
+        // reverse-resolve is best-effort; wallet-add still succeeds if it fails.
+        let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
         let suiNSName: String?
-        if input.hasSuffix(".sui") || input.hasPrefix("@") {
-            suiNSName = input.lowercased()
+        if trimmedInput.hasSuffix(".sui") || trimmedInput.hasPrefix("@") {
+            suiNSName = trimmedInput.lowercased()
         } else {
-            suiNSName = nil
+            suiNSName = try? await suiNS.reverseResolve(address: address)
         }
         let wallet = Wallet(
             address: address.rawValue,

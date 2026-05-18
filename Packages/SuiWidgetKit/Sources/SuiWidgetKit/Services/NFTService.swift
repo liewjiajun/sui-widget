@@ -79,6 +79,31 @@ public struct NFTService {
                 result.append(row)
             }
         }
+
+        // Attach the upserted NFT rows onto the wallet's CachedPortfolio so
+        // NFTGalleryViewModel (which reads `portfolio.nfts`) can see them.
+        // We diff against the existing relationship to avoid the cascade-delete
+        // trap that `removeAll()` on a `.cascade`-ruled relationship triggers.
+        let id = walletId
+        var portfolioDescriptor = FetchDescriptor<CachedPortfolio>(
+            predicate: #Predicate { $0.walletId == id }
+        )
+        portfolioDescriptor.fetchLimit = 1
+        if let portfolio = try modelContext.fetch(portfolioDescriptor).first {
+            let newNFTIds = Set(result.map(\.objectId))
+            // Remove NFTs no longer in the wallet from the relationship. The
+            // `CachedNFTItem` row itself is left in the store — it will simply
+            // not be referenced by any portfolio.
+            for existing in portfolio.nfts where !newNFTIds.contains(existing.objectId) {
+                portfolio.nfts.removeAll(where: { $0.objectId == existing.objectId })
+            }
+            // Append NFTs that weren't already in the relationship.
+            let existingNFTIds = Set(portfolio.nfts.map(\.objectId))
+            for nft in result where !existingNFTIds.contains(nft.objectId) {
+                portfolio.nfts.append(nft)
+            }
+        }
+
         try modelContext.save()
 
         // Best-effort background thumbnail generation for new NFTs. The

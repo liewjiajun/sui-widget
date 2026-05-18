@@ -44,6 +44,7 @@ final class PortfolioViewModel {
     private let walletService: WalletService
     private let portfolioService: PortfolioService
     private let stakingService: StakingService
+    private let nftService: NFTService
     private let priceHistoryService: PriceHistoryService
     private var foregroundTimer: Timer?
     /// Observer token for `.suiWidgetRefreshFrequencyChanged`. Excluded from
@@ -64,6 +65,20 @@ final class PortfolioViewModel {
             coinGecko: CoinGeckoClient(modelContext: modelContext)
         )
         self.stakingService = StakingService(modelContext: modelContext, sui: rpc)
+        // Root the thumbnail cache at the App Group container so generated
+        // thumbnails persist where the widget extension can read them. Falls
+        // back to a tmp directory only when the entitlement is unavailable
+        // (e.g. unit tests / previews).
+        let thumbnailContainerURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: AppGroupStore.groupIdentifier
+        ) ?? FileManager.default.temporaryDirectory
+        self.nftService = NFTService(
+            modelContext: modelContext,
+            sui: rpc,
+            thumbnails: ThumbnailGenerator(
+                cache: ImageCache(containerURL: thumbnailContainerURL)
+            )
+        )
         self.priceHistoryService = PriceHistoryService(
             modelContext: modelContext,
             coinGecko: CoinGeckoClient(modelContext: modelContext)
@@ -285,61 +300,103 @@ final class PortfolioViewModel {
     }
 
     private func refreshSingleWallet(walletId: UUID) async {
+        // Strict sequential refresh: portfolio's delete-and-insert must finish
+        // before stakes / NFTs attach to the new snapshot, otherwise the racing
+        // services may attach to a row that gets cascade-deleted moments later.
+        // Each step is wrapped individually so a partial failure (e.g. stakes
+        // timeout) doesn't suppress the portfolio refresh result.
+        var partialErrors: [String] = []
+        var portfolioError: Error?
         do {
-            // Refresh portfolio + stakes in parallel.
-            async let portfolioRefresh: Void = {
-                _ = try await portfolioService.refresh(walletId: walletId)
-            }()
-            async let stakingRefresh: Void = {
-                _ = try? await stakingService.refresh(walletId: walletId)
-            }()
-            _ = try await portfolioRefresh
-            _ = await stakingRefresh
-            loadCachedPortfolio()
-            loadCachedStakes()
-            // Refresh hourly price-history for tracked tokens so the widget's
-            // sparkline picks up fresh data.
-            await priceHistoryService.refreshAll()
-            // Tell the widget extension the shared SwiftData store has fresh
-            // data so its next timeline render reflects the user-visible refresh.
-            WidgetCenter.shared.reloadAllTimelines()
-            loadState = .loaded
-            refreshSuccessPulse = UUID()
+            _ = try await portfolioService.refresh(walletId: walletId)
         } catch {
-            // Show last cached + error pill.
-            loadCachedPortfolio()
-            if portfolio != nil {
-                loadState = .error(message: "couldn't refresh — showing last cached", retry: nil)
-            } else {
-                loadState = .error(message: "couldn't load — \(error.localizedDescription)", retry: nil)
-            }
-            refreshError = error.localizedDescription
+            portfolioError = error
+            partialErrors.append("portfolio: \(error.localizedDescription)")
+        }
+        do {
+            _ = try await stakingService.refresh(walletId: walletId)
+        } catch {
+            partialErrors.append("stakes: \(error.localizedDescription)")
+        }
+        do {
+            _ = try await nftService.refresh(walletId: walletId)
+        } catch {
+            partialErrors.append("NFTs: \(error.localizedDescription)")
+        }
+
+        loadCachedPortfolio()
+        loadCachedStakes()
+        // Refresh hourly price-history for tracked tokens so the widget's
+        // sparkline picks up fresh data.
+        await priceHistoryService.refreshAll()
+        // Tell the widget extension the shared SwiftData store has fresh
+        // data so its next timeline render reflects the user-visible refresh.
+        WidgetCenter.shared.reloadAllTimelines()
+
+        if let portfolioError, portfolio == nil {
+            loadState = .error(
+                message: "couldn't load — \(portfolioError.localizedDescription)",
+                retry: nil
+            )
+            refreshError = partialErrors.joined(separator: " · ")
+        } else if !partialErrors.isEmpty {
+            // Portfolio loaded (fresh or cached) but stakes / NFTs partially failed.
+            // Keep the data visible; surface the failures via refreshError.
+            loadState = portfolio != nil
+                ? .loaded
+                : .error(message: "couldn't refresh — showing last cached", retry: nil)
+            refreshError = partialErrors.joined(separator: " · ")
+            if portfolio != nil { refreshSuccessPulse = UUID() }
+        } else {
+            loadState = .loaded
+            refreshError = nil
+            refreshSuccessPulse = UUID()
         }
     }
 
     private func refreshAllWallets() async {
         var lastError: Error?
-        for wallet in wallets {
+        var partialErrors: [String] = []
+        for wallet in wallets where wallet.includeInWidget {
+            // Sequential per-wallet refresh — same ordering rationale as
+            // `refreshSingleWallet`: portfolio first (delete+insert), then
+            // stakes / NFTs attach onto the fresh snapshot.
             do {
                 _ = try await portfolioService.refresh(walletId: wallet.id)
             } catch {
                 lastError = error
+                partialErrors.append("portfolio: \(error.localizedDescription)")
             }
-            _ = try? await stakingService.refresh(walletId: wallet.id)
+            do {
+                _ = try await stakingService.refresh(walletId: wallet.id)
+            } catch {
+                partialErrors.append("stakes: \(error.localizedDescription)")
+            }
+            do {
+                _ = try await nftService.refresh(walletId: wallet.id)
+            } catch {
+                partialErrors.append("NFTs: \(error.localizedDescription)")
+            }
         }
         loadCachedAggregate()
         loadAggregateStakes()
         await priceHistoryService.refreshAll()
         WidgetCenter.shared.reloadAllTimelines()
         if let lastError {
-            refreshError = lastError.localizedDescription
+            refreshError = partialErrors.joined(separator: " · ")
             if aggregate != nil {
                 loadState = .error(message: "couldn't refresh some wallets — showing last cached", retry: nil)
             } else {
                 loadState = .error(message: "couldn't load — \(lastError.localizedDescription)", retry: nil)
             }
+        } else if !partialErrors.isEmpty {
+            // Portfolio succeeded for every wallet but some stakes / NFTs partial failures.
+            refreshError = partialErrors.joined(separator: " · ")
+            loadState = aggregate != nil ? .loaded : .error(message: "couldn't load aggregate", retry: nil)
+            if aggregate != nil { refreshSuccessPulse = UUID() }
         } else {
             loadState = .loaded
+            refreshError = nil
             refreshSuccessPulse = UUID()
         }
     }
