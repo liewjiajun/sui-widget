@@ -1,8 +1,13 @@
 import Foundation
 import SwiftData
 
-/// Refreshes the merged Sui blog + GitHub releases news feed. Maintains a 30-minute
-/// cache window guarded by `AppSettings.lastNewsFetchedAt` and a 30-item cap.
+/// Refreshes the Sui blog news feed. Maintains a 30-minute cache window guarded
+/// by `AppSettings.lastNewsFetchedAt` and a 30-item cap.
+///
+/// V1 intentionally surfaces only editorial blog posts in the News tab; GitHub
+/// releases are technical/changelog content and were removed from this feed.
+/// `RSSClient.fetchGitHubReleases` and `fetchMerged` remain available in the
+/// data layer for a future Developer Updates surface.
 public struct NewsService {
     public let modelContext: ModelContext
     public let rss: RSSClient
@@ -22,7 +27,7 @@ public struct NewsService {
     }
 
     /// Refreshes the news feed. Returns cached rows if `AppSettings.lastNewsFetchedAt`
-    /// is within `cacheTTL`. Otherwise fetches merged blog + releases, upserts by
+    /// is within `cacheTTL`. Otherwise fetches the Sui blog feed, upserts by
     /// `urlHash`, deletes rows that fall outside the top 30, and updates the timestamp.
     @discardableResult
     public func refresh(force: Bool = false) async throws -> [CachedNewsItem] {
@@ -34,7 +39,11 @@ public struct NewsService {
             return try cachedNewsSorted()
         }
 
-        let raw = try await rss.fetchMerged(limit: 30)
+        // Blog-only: GitHub releases are technical changelog content and are
+        // excluded from the News tab. `RSSClient.fetchBlog()` returns all items
+        // unsorted, so we sort by publishedAt desc and cap to 30 here.
+        let blog = try await rss.fetchBlog()
+        let raw = Array(blog.sorted { $0.publishedAt > $1.publishedAt }.prefix(30))
         let topHashes = Set(raw.map(\.urlHash))
 
         // Delete existing rows that are not in the new top-30 set.

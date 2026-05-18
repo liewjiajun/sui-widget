@@ -13,20 +13,21 @@ extension MockURLProtocolSuite {
             return ModelContext(container)
         }
 
-        private func setupFeeds() throws {
+        /// Blog-only handler — any non-blog host returns 404 so that if a
+        /// regression re-introduces a GitHub-releases fetch, the test
+        /// surfaces the unexpected request.
+        private func setupBlogOnlyFeed() throws {
             let blog = try FixtureLoader.data(named: "rss-sui-blog.xml")
-            let atom = try FixtureLoader.data(named: "rss-mysten-releases.atom")
             MockURLProtocol.handler = { request in
                 let host = request.url?.host ?? ""
                 if host.contains("blog.sui.io") { return (200, blog, [:], nil) }
-                if host.contains("github.com")  { return (200, atom, [:], nil) }
                 return (404, Data(), [:], nil)
             }
         }
 
         @Test func refresh_populates_cache_and_sets_timestamp() async throws {
             MockURLProtocol.reset()
-            try setupFeeds()
+            try setupBlogOnlyFeed()
             let context = try makeContext()
             let service = NewsService(
                 modelContext: context,
@@ -43,7 +44,7 @@ extension MockURLProtocolSuite {
 
         @Test func refresh_uses_cache_when_fresh() async throws {
             MockURLProtocol.reset()
-            try setupFeeds()
+            try setupBlogOnlyFeed()
             let context = try makeContext()
             let service = NewsService(
                 modelContext: context,
@@ -58,7 +59,7 @@ extension MockURLProtocolSuite {
 
         @Test func refresh_returns_results_sorted_by_publishedAt_desc() async throws {
             MockURLProtocol.reset()
-            try setupFeeds()
+            try setupBlogOnlyFeed()
             let context = try makeContext()
             let service = NewsService(
                 modelContext: context,
@@ -68,6 +69,9 @@ extension MockURLProtocolSuite {
             let result = try await service.refresh(force: true)
             let dates = result.map(\.publishedAt)
             #expect(dates == dates.sorted(by: >))
+            // News tab is blog-only — guard against a regression that
+            // re-introduces GitHub release fetching.
+            #expect(result.allSatisfy { $0.source == .blog })
         }
     }
 }
