@@ -1,10 +1,13 @@
 import SwiftUI
 import SuiWidgetKit
+import UIKit
+import AVFoundation
 
 struct WalletAddView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: WalletAddViewModel?
+    @State private var showingScanner = false
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -26,6 +29,20 @@ struct WalletAddView: View {
                 Button("Cancel") { dismiss() }
             }
         }
+        .sheet(isPresented: $showingScanner) {
+            QRScannerView(
+                onScan: { payload in
+                    // Normalize: strip "sui:" prefix if present (some wallets emit URIs like sui:0x...)
+                    var address = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if address.lowercased().hasPrefix("sui:") {
+                        address = String(address.dropFirst(4))
+                    }
+                    viewModel?.input = address
+                    showingScanner = false
+                },
+                onCancel: { showingScanner = false }
+            )
+        }
     }
 
     @ViewBuilder
@@ -45,6 +62,30 @@ struct WalletAddView: View {
                 Text("Address or SuiNS name")
             } footer: {
                 Text("Paste a 0x address, or type a .sui name to resolve.")
+            }
+
+            Section {
+                HStack(spacing: SuiSpacing.s2) {
+                    Button(action: pasteFromClipboard) {
+                        Label("Paste", systemImage: "doc.on.clipboard")
+                            .font(SuiTypography.body(12, weight: .semibold))
+                            .padding(.horizontal, SuiSpacing.s3)
+                            .padding(.vertical, SuiSpacing.s2)
+                            .background(Capsule().fill(SuiColor.suiBlue.opacity(0.12)))
+                            .foregroundStyle(SuiColor.suiBlue)
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: { showingScanner = true }) {
+                        Label("Scan QR", systemImage: "qrcode.viewfinder")
+                            .font(SuiTypography.body(12, weight: .semibold))
+                            .padding(.horizontal, SuiSpacing.s3)
+                            .padding(.vertical, SuiSpacing.s2)
+                            .background(Capsule().fill(SuiColor.suiBlue.opacity(0.12)))
+                            .foregroundStyle(SuiColor.suiBlue)
+                    }
+                    .buttonStyle(.plain)
+                    Spacer()
+                }
             }
 
             Section("Options") {
@@ -79,6 +120,12 @@ struct WalletAddView: View {
             }
         }
         .onAppear { inputFocused = true }
+    }
+
+    private func pasteFromClipboard() {
+        if let pasted = UIPasteboard.general.string?.trimmingCharacters(in: .whitespacesAndNewlines), !pasted.isEmpty {
+            viewModel?.input = pasted
+        }
     }
 
     @ViewBuilder

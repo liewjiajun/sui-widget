@@ -46,6 +46,7 @@ targets:
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_CFBundleDisplayName: Sui Widget
+        INFOPLIST_KEY_NSCameraUsageDescription: "Sui Widget uses the camera to scan QR codes containing Sui wallet addresses."
 
   SuiWidgetWidget:
     type: app-extension

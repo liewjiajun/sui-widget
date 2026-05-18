@@ -10,6 +10,7 @@ struct OnboardingAddWalletView: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: WalletAddViewModel?
+    @State private var showingScanner = false
     @FocusState private var inputFocused: Bool
 
     var body: some View {
@@ -23,6 +24,19 @@ struct OnboardingAddWalletView: View {
                 ProgressView()
                     .onAppear { viewModel = WalletAddViewModel(modelContext: modelContext) }
             }
+        }
+        .sheet(isPresented: $showingScanner) {
+            QRScannerView(
+                onScan: { payload in
+                    var address = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if address.lowercased().hasPrefix("sui:") {
+                        address = String(address.dropFirst(4))
+                    }
+                    viewModel?.input = address
+                    showingScanner = false
+                },
+                onCancel: { showingScanner = false }
+            )
         }
     }
 
@@ -61,7 +75,7 @@ struct OnboardingAddWalletView: View {
             }
             .padding(.horizontal)
 
-            // Paste pill + (disabled) QR pill
+            // Paste + Scan QR pills
             HStack(spacing: SuiSpacing.s2) {
                 Button(action: pasteFromClipboard) {
                     Label("Paste", systemImage: "doc.on.clipboard")
@@ -71,15 +85,14 @@ struct OnboardingAddWalletView: View {
                         .background(Capsule().fill(SuiColor.suiBlue.opacity(0.12)))
                         .foregroundStyle(SuiColor.suiBlue)
                 }
-                Button(action: {}) {
+                Button(action: { showingScanner = true }) {
                     Label("Scan QR", systemImage: "qrcode.viewfinder")
                         .font(SuiTypography.body(12, weight: .semibold))
                         .padding(.horizontal, SuiSpacing.s3)
                         .padding(.vertical, SuiSpacing.s2)
-                        .background(Capsule().fill(SuiColor.flat.opacity(0.12)))
-                        .foregroundStyle(SuiColor.flat)
+                        .background(Capsule().fill(SuiColor.suiBlue.opacity(0.12)))
+                        .foregroundStyle(SuiColor.suiBlue)
                 }
-                .disabled(true)
                 Spacer()
             }
             .padding(.horizontal)
