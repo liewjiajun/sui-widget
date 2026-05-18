@@ -1,9 +1,15 @@
 import XCTest
 
 final class PlaceholderUITests: XCTestCase {
-    func test_appLaunches() throws {
+    func test_appLaunches_andShowsTabView() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-hasCompletedOnboarding", "YES"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["App Group handshake"].waitForExistence(timeout: 5))
+
+        // The Portfolio tab should be selected by default.
+        XCTAssertTrue(app.tabBars.buttons["Portfolio"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["NFTs"].exists)
+        XCTAssertTrue(app.tabBars.buttons["News"].exists)
+        XCTAssertTrue(app.tabBars.buttons["Settings"].exists)
     }
 }
