@@ -9,7 +9,7 @@ struct SwiftDataStackTests {
     @Test("in-memory container initializes with the populated schema")
     func inMemoryContainerInitializes() throws {
         let container = try SwiftDataStack.makeContainer(inMemory: true)
-        #expect(container.schema.entities.count == 13)
+        #expect(container.schema.entities.count == 14)
     }
 
     @Test("schema lists exactly the expected entity names alphabetically")
@@ -22,6 +22,7 @@ struct SwiftDataStackTests {
             "CachedNFTItem",
             "CachedNewsItem",
             "CachedPortfolio",
+            "CachedPriceHistory",
             "CachedStakePosition",
             "CachedSuiNSResolution",
             "CachedTokenHolding",

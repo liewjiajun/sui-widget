@@ -92,6 +92,21 @@ public struct SuiTimelineProvider: AppIntentTimelineProvider {
             let snapshotAt = portfolio?.snapshotAt ?? .distantPast
             let isStale = Date().timeIntervalSince(snapshotAt) > 15 * 60
 
+            // Pick the top tracked token's coingecko id for sparkline.
+            let topTrackedSymbol = portfolioSummary?.topHoldings
+                .first(where: { ($0.usdValue as NSDecimalNumber).doubleValue > 0 })?.symbol
+            let sparklinePoints: [Decimal] = {
+                guard let topTrackedSymbol else { return [] }
+                // Find the coingecko id for that symbol via the cached coin list.
+                let allMappings = (try? context.fetch(FetchDescriptor<CachedCoinListEntry>())) ?? []
+                guard let mapping = allMappings.first(where: { $0.symbol.uppercased() == topTrackedSymbol.uppercased() }) else {
+                    return []
+                }
+                let id = mapping.coingeckoId
+                let descriptor = FetchDescriptor<CachedPriceHistory>(predicate: #Predicate { $0.coingeckoId == id })
+                return (try? context.fetch(descriptor).first)?.prices ?? []
+            }()
+
             return SuiWidgetEntry(
                 configuration: configuration,
                 wallet: walletSummary,
@@ -99,6 +114,7 @@ public struct SuiTimelineProvider: AppIntentTimelineProvider {
                 stakes: stakeSummary,
                 topNFTs: Array(topNFTs),
                 topNews: Array(topNews),
+                sparklinePoints: sparklinePoints,
                 isStale: isStale
             )
         } catch {

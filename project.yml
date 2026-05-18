@@ -41,12 +41,26 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.sui.widget
         CODE_SIGN_ENTITLEMENTS: SuiWidget/Supporting/SuiWidget.entitlements
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_CFBundleDisplayName: Sui Widget
-        INFOPLIST_KEY_NSCameraUsageDescription: "Sui Widget uses the camera to scan QR codes containing Sui wallet addresses."
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: SuiWidget/Supporting/Info.plist
+      properties:
+        CFBundleDisplayName: Sui Widget
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+          UISceneConfigurations: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSCameraUsageDescription: "Sui Widget uses the camera to scan QR codes containing Sui wallet addresses."
+        BGTaskSchedulerPermittedIdentifiers:
+          - io.sui.widget.refresh
+          - io.sui.widget.cleanup
+          - io.sui.widget.coinlist
 
   SuiWidgetWidget:
     type: app-extension

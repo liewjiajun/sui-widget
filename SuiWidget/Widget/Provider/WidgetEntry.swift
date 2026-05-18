@@ -10,6 +10,7 @@ public struct SuiWidgetEntry: TimelineEntry {
     public let stakes: StakeSummary?
     public let topNFTs: [NFTSummary]
     public let topNews: [NewsSummary]
+    public let sparklinePoints: [Decimal]
     public let isStale: Bool
 
     public init(
@@ -20,6 +21,7 @@ public struct SuiWidgetEntry: TimelineEntry {
         stakes: StakeSummary? = nil,
         topNFTs: [NFTSummary] = [],
         topNews: [NewsSummary] = [],
+        sparklinePoints: [Decimal] = [],
         isStale: Bool = false
     ) {
         self.date = date
@@ -29,6 +31,7 @@ public struct SuiWidgetEntry: TimelineEntry {
         self.stakes = stakes
         self.topNFTs = topNFTs
         self.topNews = topNews
+        self.sparklinePoints = sparklinePoints
         self.isStale = isStale
     }
 
@@ -57,6 +60,7 @@ public struct SuiWidgetEntry: TimelineEntry {
                 NewsSummary(title: "Sui Foundation announces…", source: .blog, publishedAt: Date()),
                 NewsSummary(title: "v1.50.0 release", source: .githubRelease, publishedAt: Date()),
             ],
+            sparklinePoints: [1.45, 1.48, 1.50, 1.52, 1.51, 1.55, 1.58, 1.60, 1.62, 1.61, 1.65].map { Decimal($0) },
             isStale: false
         )
     }

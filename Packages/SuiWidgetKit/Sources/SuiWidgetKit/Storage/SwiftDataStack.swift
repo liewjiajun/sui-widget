@@ -18,6 +18,7 @@ public enum SwiftDataStack {
         CachedNFTItem.self,
         CachedNewsItem.self,
         CachedPortfolio.self,
+        CachedPriceHistory.self,
         CachedStakePosition.self,
         CachedSuiNSResolution.self,
         CachedTokenHolding.self,

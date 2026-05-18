@@ -41,6 +41,8 @@ final class PortfolioViewModel {
     private let walletService: WalletService
     private let portfolioService: PortfolioService
     private let stakingService: StakingService
+    private let priceHistoryService: PriceHistoryService
+    private var foregroundTimer: Timer?
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -53,6 +55,10 @@ final class PortfolioViewModel {
             coinGecko: CoinGeckoClient(modelContext: modelContext)
         )
         self.stakingService = StakingService(modelContext: modelContext, sui: rpc)
+        self.priceHistoryService = PriceHistoryService(
+            modelContext: modelContext,
+            coinGecko: CoinGeckoClient(modelContext: modelContext)
+        )
     }
 
     func loadInitial() {
@@ -68,8 +74,24 @@ final class PortfolioViewModel {
                 loadCachedPortfolio()
                 loadCachedStakes()
             }
+            startForegroundTimer()
         } catch {
             loadState = .error(message: "Failed to load wallets: \(error.localizedDescription)", retry: nil)
+        }
+    }
+
+    /// Re-arms a recurring Timer that triggers a `refresh()` after every
+    /// `AppSettings.refreshFrequencyMinutes` minutes the app stays in the
+    /// foreground. Cleared and re-armed on each call so a settings change
+    /// takes effect immediately.
+    private func startForegroundTimer() {
+        let settings = try? modelContext.fetch(FetchDescriptor<AppSettings>()).first
+        let minutes = max(15, settings?.refreshFrequencyMinutes ?? 30)
+        foregroundTimer?.invalidate()
+        foregroundTimer = Timer.scheduledTimer(withTimeInterval: Double(minutes) * 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                await self?.refresh()
+            }
         }
     }
 
@@ -220,6 +242,9 @@ final class PortfolioViewModel {
             _ = await stakingRefresh
             loadCachedPortfolio()
             loadCachedStakes()
+            // Refresh hourly price-history for tracked tokens so the widget's
+            // sparkline picks up fresh data.
+            await priceHistoryService.refreshAll()
             // Tell the widget extension the shared SwiftData store has fresh
             // data so its next timeline render reflects the user-visible refresh.
             WidgetCenter.shared.reloadAllTimelines()
@@ -248,6 +273,7 @@ final class PortfolioViewModel {
         }
         loadCachedAggregate()
         loadAggregateStakes()
+        await priceHistoryService.refreshAll()
         WidgetCenter.shared.reloadAllTimelines()
         if let lastError {
             refreshError = lastError.localizedDescription
