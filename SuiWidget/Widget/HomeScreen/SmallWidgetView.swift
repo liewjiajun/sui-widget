@@ -35,6 +35,7 @@ public struct SmallWidgetView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .homeWidgetChrome(watermarkSize: 32)
         .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }

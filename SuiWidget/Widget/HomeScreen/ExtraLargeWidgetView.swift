@@ -83,6 +83,7 @@ public struct ExtraLargeWidgetView: View {
             }
         }
         .padding(12)
+        .homeWidgetChrome(watermarkSize: 72)
         .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }

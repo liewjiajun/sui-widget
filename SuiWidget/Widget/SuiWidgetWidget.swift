@@ -14,7 +14,12 @@ public struct SuiWidgetWidget: Widget {
             provider: SuiTimelineProvider()
         ) { entry in
             SuiWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                // Neutral system background so HomeWidgetChrome's tinted gradient
+                // composites identically in light + dark mode. Lock Screen
+                // widgets ignore this — iOS tints them monochrome.
+                .containerBackground(for: .widget) {
+                    Color(.systemBackground)
+                }
         }
         .configurationDisplayName("Sui Portfolio")
         .description("Portfolio value, top tokens, NFTs, news and staking.")

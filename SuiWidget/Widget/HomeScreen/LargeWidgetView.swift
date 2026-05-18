@@ -41,6 +41,7 @@ public struct LargeWidgetView: View {
                 .contentTransition(.numericText())
         }
         .padding(10)
+        .homeWidgetChrome(watermarkSize: 64)
         .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }

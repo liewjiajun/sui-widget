@@ -42,6 +42,7 @@ public struct MediumWidgetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(10)
+        .homeWidgetChrome(watermarkSize: 48)
         .animation(.default, value: entry)
         .widgetURL(URL(string: "suiwidget://wallet/primary"))
     }
