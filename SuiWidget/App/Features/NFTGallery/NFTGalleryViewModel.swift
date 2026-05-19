@@ -28,8 +28,6 @@ final class NFTGalleryViewModel {
         let rpc = SuiRPCClient()
         let suiNS = SuiNSResolver(rpc: rpc, modelContext: modelContext)
         self.walletService = WalletService(modelContext: modelContext, suiNS: suiNS)
-        // Root the thumbnail cache at the App Group container so generated
-        // thumbnails persist where the widget extension can read them.
         let thumbnailContainerURL = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: AppGroupStore.groupIdentifier
         ) ?? FileManager.default.temporaryDirectory
@@ -40,10 +38,6 @@ final class NFTGalleryViewModel {
                 cache: ImageCache(containerURL: thumbnailContainerURL)
             )
         )
-        // NFTs attach onto the wallet's CachedPortfolio row, so a portfolio
-        // refresh has to run before the NFT refresh on first entry — otherwise
-        // there's no portfolio to attach to and the NFTGallery view stays
-        // empty even after a successful RPC pull.
         self.portfolioService = PortfolioService(
             modelContext: modelContext,
             sui: rpc,
@@ -59,11 +53,28 @@ final class NFTGalleryViewModel {
                 collections = []
                 return
             }
-            let walletId = primary.id
-            let descriptor = FetchDescriptor<CachedPortfolio>(
-                predicate: #Predicate { $0.walletId == walletId }
+            // Query NFT rows directly by wallet address — independent of
+            // CachedPortfolio. Codex's high-severity finding: if portfolio
+            // refresh failed but the NFT RPC succeeded, the rows existed but
+            // the gallery couldn't see them because it went through the
+            // portfolio relationship. The walletAddress-scoped descriptor
+            // makes the gallery robust to portfolio refresh failures.
+            let walletAddr = primary.address
+            let descriptor = FetchDescriptor<CachedNFTItem>(
+                predicate: #Predicate { $0.walletAddress == walletAddr }
             )
-            let nfts = (try? modelContext.fetch(descriptor).first?.nfts) ?? []
+            var nfts = (try? modelContext.fetch(descriptor)) ?? []
+            // Backward-compat: older NFT rows from before the walletAddress
+            // field existed have walletAddress == nil. Fall back to reading
+            // them via the portfolio relationship so they don't disappear
+            // until the next NFT refresh re-tags them.
+            if nfts.isEmpty {
+                let walletId = primary.id
+                let portfolioDescriptor = FetchDescriptor<CachedPortfolio>(
+                    predicate: #Predicate { $0.walletId == walletId }
+                )
+                nfts = (try? modelContext.fetch(portfolioDescriptor).first?.nfts) ?? []
+            }
             let grouped = Dictionary(grouping: nfts) { $0.collectionName ?? "Uncategorized" }
             collections = grouped
                 .map { Collection(id: $0.key, name: $0.key, nfts: $0.value) }
@@ -78,8 +89,7 @@ final class NFTGalleryViewModel {
 
     /// On every tab appear: load from cache, and if cache is empty kick off a
     /// network refresh so the user doesn't have to manually pull-to-refresh on
-    /// first entry. This is the path that surfaces NFTs when a wallet has been
-    /// added but its initial sync didn't include an NFT pass for any reason.
+    /// first entry.
     func refreshIfEmpty() {
         if collections.isEmpty {
             Task { await refresh() }
@@ -94,14 +104,18 @@ final class NFTGalleryViewModel {
                 load()
                 return
             }
-            // Portfolio refresh runs first because NFTService attaches the
-            // upserted CachedNFTItem rows onto `portfolio.nfts`. If the
-            // portfolio row is missing the attachment becomes a no-op.
-            _ = try? await portfolioService.refresh(walletId: primary.id)
+            // Portfolio refresh is best-effort: NFTService now creates a shell
+            // CachedPortfolio if one doesn't exist, and the gallery reads rows
+            // by walletAddress, so a portfolio-RPC blip no longer blocks NFTs.
+            // A portfolio failure is still surfaced as refreshError so the
+            // user sees it instead of silent staleness.
+            do {
+                _ = try await portfolioService.refresh(walletId: primary.id)
+            } catch {
+                refreshError = "portfolio: \(error.localizedDescription)"
+            }
             _ = try await nftService.refresh(walletId: primary.id)
             load()
-            // Widgets read the same portfolio.nfts relationship — reload
-            // timelines so any showInWidget thumbnails appear immediately.
             WidgetCenter.shared.reloadAllTimelines()
         } catch {
             refreshError = error.localizedDescription

@@ -45,6 +45,11 @@ struct NFTGalleryView: View {
         switch viewModel.loadState {
         case .empty(let message):
             VStack(spacing: SuiSpacing.s4) {
+                if let error = viewModel.refreshError {
+                    refreshWarningBanner(message: error)
+                        .padding(.horizontal)
+                        .padding(.top, SuiSpacing.s3)
+                }
                 Spacer()
                 Image(systemName: "square.grid.2x2")
                     .font(.system(size: 48))
@@ -61,6 +66,9 @@ struct NFTGalleryView: View {
         default:
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: SuiSpacing.s5) {
+                    if let error = viewModel.refreshError {
+                        refreshWarningBanner(message: error)
+                    }
                     ForEach(viewModel.collections) { collection in
                         collectionSection(collection: collection, viewModel: viewModel)
                     }
@@ -68,6 +76,27 @@ struct NFTGalleryView: View {
                 .padding()
             }
         }
+    }
+
+    /// Inline coral banner so partial NFT refresh failures (RPC timeout,
+    /// portfolio dependency, etc.) are visible instead of silently leaving the
+    /// gallery empty.
+    private func refreshWarningBanner(message: String) -> some View {
+        HStack(alignment: .top, spacing: SuiSpacing.s2) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(SuiTypography.body(12))
+                .foregroundStyle(SuiColor.coral)
+            Text(message)
+                .font(SuiTypography.mono(11))
+                .foregroundStyle(SuiColor.coral)
+                .lineLimit(3)
+            Spacer(minLength: 0)
+        }
+        .padding(SuiSpacing.s2)
+        .background(
+            RoundedRectangle(cornerRadius: SuiSpacing.cardRadius, style: .continuous)
+                .fill(SuiColor.coral.opacity(0.10))
+        )
     }
 
     @ViewBuilder

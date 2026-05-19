@@ -46,6 +46,15 @@ public final class CachedTokenHolding {
     public var priceChange24h: Double?
     public var iconURL: String?
     public var isTracked: Bool
+    /// When set, this holding is a wrapped DeFi position (LST receipt, lending
+    /// sCoin, etc.) rather than a spendable wallet balance. The portfolio
+    /// total still includes its USD value; the UI tags the row with a small
+    /// "via <dappName>" pill so the user can tell what's tied up where.
+    public var dappName: String?
+    /// Canonicalised coin type of the underlying asset whose CoinGecko price
+    /// we used to value this wrapped position. Persisted for debugging /
+    /// future precise-ratio pricing.
+    public var underlyingCoinType: String?
 
     public init(
         id: UUID = UUID(),
@@ -57,7 +66,9 @@ public final class CachedTokenHolding {
         priceUSD: Decimal? = nil,
         priceChange24h: Double? = nil,
         iconURL: String? = nil,
-        isTracked: Bool
+        isTracked: Bool,
+        dappName: String? = nil,
+        underlyingCoinType: String? = nil
     ) {
         self.id = id
         self.coinType = coinType
@@ -69,5 +80,7 @@ public final class CachedTokenHolding {
         self.priceChange24h = priceChange24h
         self.iconURL = iconURL
         self.isTracked = isTracked
+        self.dappName = dappName
+        self.underlyingCoinType = underlyingCoinType
     }
 }

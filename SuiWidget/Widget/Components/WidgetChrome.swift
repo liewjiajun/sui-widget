@@ -1,23 +1,21 @@
 import SwiftUI
+import WidgetKit
 import SuiWidgetKit
 
-/// Visual chrome applied to every Home Screen widget — Sui-blue tinted background,
-/// a faint pixel-droplet watermark in the bottom-right corner, and a pixel accent
-/// stripe across the top.
-///
-/// Lock Screen widgets MUST stay monochrome per iOS (the OS tints them to the
-/// system accent) — they deliberately do NOT use this modifier.
-public struct HomeWidgetChrome: ViewModifier {
-    let watermarkSize: CGFloat
+/// Sui-blue gradient + pixel-droplet watermark + top accent stripe used as the
+/// `containerBackground` for every Home Screen widget. Rendering this via the
+/// container background (rather than as a ZStack sibling to the content) is
+/// what makes the chrome fill the full widget rect — including the padded
+/// content's outer 10pt — instead of sizing to the content alone.
+public struct HomeWidgetBackground: View {
+    public let watermarkSize: CGFloat
 
     public init(watermarkSize: CGFloat) {
         self.watermarkSize = watermarkSize
     }
 
-    public func body(content: Content) -> some View {
+    public var body: some View {
         ZStack(alignment: .topLeading) {
-            // Tinted background gradient — sits on the system background so it
-            // reads identically in light + dark mode.
             LinearGradient(
                 colors: [
                     SuiColor.suiTint.opacity(0.30),
@@ -37,8 +35,9 @@ public struct HomeWidgetChrome: ViewModifier {
                 }
             }
 
-            // Top pixel-accent stripe — 24 alternating-opacity 3pt rectangles
-            // forming a subtle pixel-art brand mark across the very top edge.
+            // Top pixel-accent stripe — 24 alternating-opacity 3pt rectangles.
+            // Rendered against the widget's actual top edge thanks to
+            // containerBackground, not the padded content area.
             HStack(spacing: 0) {
                 ForEach(0..<24, id: \.self) { idx in
                     Rectangle()
@@ -49,17 +48,19 @@ public struct HomeWidgetChrome: ViewModifier {
             }
             .frame(maxHeight: 3, alignment: .top)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-
-            // Foreground widget content.
-            content
         }
     }
 }
 
 public extension View {
-    /// Applies the Home Screen widget chrome. Pass a `watermarkSize` tuned to
-    /// the widget family (32 small / 48 medium / 64 large / 72 XL).
+    /// Applies the Home Screen chrome to the widget rect. Internally this sets
+    /// `containerBackground(for: .widget)` — WidgetKit requires every widget to
+    /// install a container background, and that's also the only modifier that
+    /// reliably fills the widget's full bounds (including past the content's
+    /// padding) on iOS 17+.
     func homeWidgetChrome(watermarkSize: CGFloat) -> some View {
-        modifier(HomeWidgetChrome(watermarkSize: watermarkSize))
+        containerBackground(for: .widget) {
+            HomeWidgetBackground(watermarkSize: watermarkSize)
+        }
     }
 }

@@ -60,7 +60,8 @@ public struct SuiTimelineProvider: AppIntentTimelineProvider {
                             symbol: h.symbol,
                             balance: h.balance,
                             usdValue: (h.priceUSD ?? 0) * h.balance,
-                            change24h: h.priceChange24h ?? 0
+                            change24h: h.priceChange24h ?? 0,
+                            dappName: h.dappName
                         )
                     }
                 return PortfolioSummary(
@@ -80,7 +81,14 @@ public struct SuiTimelineProvider: AppIntentTimelineProvider {
                 )
             }
 
-            let topNFTs = portfolio?.nfts.filter(\.showInWidget).prefix(4).map { NFTSummary(objectId: $0.objectId, name: $0.name) } ?? []
+            let topNFTs = portfolio?.nfts.filter(\.showInWidget).prefix(4).map {
+                NFTSummary(
+                    objectId: $0.objectId,
+                    name: $0.name,
+                    thumbnailFilePath: $0.thumbnailFilePath,
+                    imageURL: $0.imageURL.isEmpty ? nil : $0.imageURL
+                )
+            } ?? []
 
             let newsDescriptor = FetchDescriptor<CachedNewsItem>(
                 sortBy: [SortDescriptor(\.publishedAt, order: .reverse)]

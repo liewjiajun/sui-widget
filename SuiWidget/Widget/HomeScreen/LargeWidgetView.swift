@@ -66,7 +66,14 @@ public struct LargeWidgetView: View {
             Text("TOKENS").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
             ForEach((entry.portfolio?.topHoldings ?? []).prefix(3), id: \.symbol) { h in
                 HStack(spacing: 4) {
-                    Text(h.symbol).font(SuiTypography.body(11, weight: .bold))
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(h.symbol).font(SuiTypography.body(11, weight: .bold))
+                        if let dapp = h.dappName {
+                            Text("via \(dapp)")
+                                .font(SuiTypography.mono(7, weight: .bold))
+                                .foregroundStyle(SuiColor.suiBlue)
+                        }
+                    }
                     Spacer()
                     Text(usd(h.usdValue))
                         .font(SuiTypography.mono(10))
@@ -80,14 +87,7 @@ public struct LargeWidgetView: View {
     private var nftRow: some View {
         HStack(spacing: 6) {
             ForEach(entry.topNFTs.prefix(4)) { nft in
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .fill(SuiColor.suiBlue.opacity(0.18))
-                    .frame(width: 44, height: 44)
-                    .overlay(
-                        Text(String(nft.name.prefix(2)))
-                            .font(SuiTypography.mono(8, weight: .bold))
-                            .foregroundStyle(SuiColor.suiDeep)
-                    )
+                WidgetNFTThumbnail(nft: nft, size: 44)
             }
             ForEach(0..<max(0, 4 - entry.topNFTs.count), id: \.self) { _ in
                 RoundedRectangle(cornerRadius: 6, style: .continuous)

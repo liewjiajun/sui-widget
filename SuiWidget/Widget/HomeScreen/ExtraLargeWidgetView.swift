@@ -35,7 +35,14 @@ public struct ExtraLargeWidgetView: View {
                 column(title: "TOKENS · \(entry.portfolio?.topHoldings.count ?? 0)") {
                     ForEach((entry.portfolio?.topHoldings ?? []).prefix(4), id: \.symbol) { h in
                         HStack(spacing: 4) {
-                            Text(h.symbol).font(SuiTypography.body(11, weight: .bold))
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(h.symbol).font(SuiTypography.body(11, weight: .bold))
+                                if let dapp = h.dappName {
+                                    Text("via \(dapp)")
+                                        .font(SuiTypography.mono(7, weight: .bold))
+                                        .foregroundStyle(SuiColor.suiBlue)
+                                }
+                            }
                             Spacer()
                             Text(usd(h.usdValue))
                                 .font(SuiTypography.mono(10))
@@ -47,14 +54,7 @@ public struct ExtraLargeWidgetView: View {
                 column(title: "NFTs · \(entry.topNFTs.count)") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
                         ForEach(entry.topNFTs.prefix(4)) { nft in
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(SuiColor.suiBlue.opacity(0.18))
-                                .frame(height: 36)
-                                .overlay(
-                                    Text(String(nft.name.prefix(2)))
-                                        .font(SuiTypography.mono(8, weight: .bold))
-                                        .foregroundStyle(SuiColor.suiDeep)
-                                )
+                            WidgetNFTThumbnail(nft: nft, size: 36, cornerRadius: 4)
                         }
                     }
                 }

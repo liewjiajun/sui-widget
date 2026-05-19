@@ -12,6 +12,8 @@ public struct TokenHolding: Codable, Equatable {
     public var priceChange24h: Double?
     public var iconURL: String?
     public var isTracked: Bool
+    public var dappName: String?
+    public var underlyingCoinType: String?
 
     public init(
         coinType: String,
@@ -22,7 +24,9 @@ public struct TokenHolding: Codable, Equatable {
         priceUSD: Decimal? = nil,
         priceChange24h: Double? = nil,
         iconURL: String? = nil,
-        isTracked: Bool
+        isTracked: Bool,
+        dappName: String? = nil,
+        underlyingCoinType: String? = nil
     ) {
         self.coinType = coinType
         self.symbol = symbol
@@ -33,5 +37,7 @@ public struct TokenHolding: Codable, Equatable {
         self.priceChange24h = priceChange24h
         self.iconURL = iconURL
         self.isTracked = isTracked
+        self.dappName = dappName
+        self.underlyingCoinType = underlyingCoinType
     }
 }

@@ -54,12 +54,18 @@ public struct PortfolioService {
         // 3. Tracked CoinGecko ids. Always include SUI when the user has any
         //    stakes — otherwise a wallet with all SUI delegated (zero in-wallet)
         //    would have no SUI price fetched and staked value couldn't be
-        //    valued in USD.
+        //    valued in USD. Wrapped DeFi positions (LST receipts, Scallop
+        //    sCoins) are priced via their underlying asset's CoinGecko id, so
+        //    we also queue the underlying for any balance that matches the
+        //    KnownProtocols registry.
         var trackedIds: [String] = []
         for balance in balances {
             let canonical = CoinTypeCanonicalizer.canonicalize(balance.coinType)
             if let mapping = canonicalLookup[canonical] {
                 trackedIds.append(mapping.coingeckoId)
+            } else if let enriched = KnownProtocols.enrichment(forCoinType: balance.coinType),
+                      let underlyingMapping = canonicalLookup[enriched.underlyingCanonicalCoinType] {
+                trackedIds.append(underlyingMapping.coingeckoId)
             }
         }
         let suiCanonical = CoinTypeCanonicalizer.canonicalize("0x2::sui::SUI")
@@ -86,10 +92,16 @@ public struct PortfolioService {
 
         for balance in balances {
             let canonicalCoinType = CoinTypeCanonicalizer.canonicalize(balance.coinType)
+            let enrichment = KnownProtocols.enrichment(forCoinType: balance.coinType)
 
-            if let mapping = canonicalLookup[canonicalCoinType] {
-                // Tracked token. Look up cached decimals (lazily populated via
-                // suix_getCoinMetadata on first miss).
+            // Pricing path: direct CoinGecko mapping wins; otherwise fall back
+            // to the wrapped position's underlying asset. Either way we get a
+            // mapping or nil; nil routes to the untracked path below.
+            let directMapping = canonicalLookup[canonicalCoinType]
+            let mapping = directMapping
+                ?? enrichment.flatMap { canonicalLookup[$0.underlyingCanonicalCoinType] }
+
+            if let mapping {
                 let decimals = await ensureDecimals(
                     canonical: canonicalCoinType,
                     rawCoinType: balance.coinType
@@ -117,16 +129,33 @@ public struct PortfolioService {
                     }
                 }
 
+                // Symbol/name preference: KnownProtocols override (e.g.,
+                // "afSUI", "sUSDC") wins so the row reads as the wrapped
+                // position rather than the underlying. Falls back to the
+                // direct CoinGecko mapping's name/symbol when the wrapper
+                // itself is listed by CoinGecko.
+                let symbol: String
+                let displayName: String
+                if let enrichment {
+                    symbol = enrichment.symbolOverride ?? mapping.symbol.uppercased()
+                    displayName = "\(enrichment.dappName) · \(mapping.name)"
+                } else {
+                    symbol = mapping.symbol.uppercased()
+                    displayName = mapping.name
+                }
+
                 holdings.append(CachedTokenHolding(
                     coinType: balance.coinType,
-                    symbol: mapping.symbol.uppercased(),
-                    name: mapping.name,
+                    symbol: symbol,
+                    name: displayName,
                     balance: amount,
                     decimals: decimals,
                     priceUSD: priceUSD,
                     priceChange24h: change24h,
                     iconURL: market?.image,
-                    isTracked: true
+                    isTracked: true,
+                    dappName: enrichment?.dappName,
+                    underlyingCoinType: enrichment?.underlyingCanonicalCoinType
                 ))
             } else {
                 // Untracked token. Try to surface real symbol/name/decimals
@@ -138,8 +167,12 @@ public struct PortfolioService {
                 let amountDouble = NSDecimalNumber(decimal: balance.totalBalance).doubleValue / unit
                 let amount = Decimal(amountDouble)
 
-                let symbol = metadata?.symbol ?? shortSymbol(from: balance.coinType)
-                let name = metadata?.name ?? balance.coinType
+                let symbol = enrichment?.symbolOverride
+                    ?? metadata?.symbol
+                    ?? shortSymbol(from: balance.coinType)
+                let name = enrichment.map { "\($0.dappName) wrapped position" }
+                    ?? metadata?.name
+                    ?? balance.coinType
 
                 holdings.append(CachedTokenHolding(
                     coinType: balance.coinType,
@@ -150,7 +183,9 @@ public struct PortfolioService {
                     priceUSD: nil,
                     priceChange24h: nil,
                     iconURL: metadata?.iconUrl,
-                    isTracked: false
+                    isTracked: false,
+                    dappName: enrichment?.dappName,
+                    underlyingCoinType: enrichment?.underlyingCanonicalCoinType
                 ))
             }
         }

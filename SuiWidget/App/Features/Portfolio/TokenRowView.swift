@@ -11,8 +11,18 @@ struct TokenRowView: View {
                 .frame(width: 36, height: 36)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(holding.symbol)
-                    .font(SuiTypography.body(14, weight: .semibold))
+                HStack(spacing: SuiSpacing.s1) {
+                    Text(holding.symbol)
+                        .font(SuiTypography.body(14, weight: .semibold))
+                    if let dapp = holding.dappName {
+                        Text("via \(dapp)")
+                            .font(SuiTypography.mono(8, weight: .bold))
+                            .padding(.horizontal, SuiSpacing.s1)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(SuiColor.suiBlue.opacity(0.18)))
+                            .foregroundStyle(SuiColor.suiBlue)
+                    }
+                }
                 Text(formattedBalance)
                     .font(SuiTypography.mono(10))
                     .foregroundStyle(.secondary)

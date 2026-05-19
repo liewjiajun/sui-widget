@@ -41,29 +41,45 @@ struct NFTDetailView: View {
 
     private var heroImage: some View {
         ZStack {
-            if let path = nft.thumbnailFilePath, let url = URL(string: path) {
-                AsyncImage(url: url) { phase in
+            // Cached widget thumbnail lives on disk as a raw filesystem path
+            // (no scheme), so URL(string:) would silently return nil; use the
+            // file-URL initialiser and check existence before relying on it.
+            if let path = nft.thumbnailFilePath,
+               FileManager.default.fileExists(atPath: path) {
+                AsyncImage(url: URL(fileURLWithPath: path)) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFill()
                     } else {
-                        fallback
-                    }
-                }
-            } else if let url = URL(string: nft.imageURL) {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else {
-                        fallback
+                        remoteHero
                     }
                 }
             } else {
-                fallback
+                remoteHero
             }
         }
         .aspectRatio(1, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: SuiSpacing.cardRadius, style: .continuous))
         .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var remoteHero: some View {
+        if !nft.imageURL.isEmpty, let url = URL(string: nft.imageURL) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                case .empty:
+                    fallback.overlay(ProgressView())
+                case .failure:
+                    fallback
+                @unknown default:
+                    fallback
+                }
+            }
+        } else {
+            fallback
+        }
     }
 
     private var fallback: some View {

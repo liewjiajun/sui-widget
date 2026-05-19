@@ -13,13 +13,14 @@ public struct SuiWidgetWidget: Widget {
             intent: SuiWidgetConfigurationIntent.self,
             provider: SuiTimelineProvider()
         ) { entry in
+            // Each home-screen widget view installs its own
+            // `containerBackground(for: .widget)` via `homeWidgetChrome`. We
+            // deliberately do NOT set one here — iOS 17+ composes the
+            // outermost containerBackground in the returned view tree, so a
+            // centralized "systemBackground" here would race with the chrome
+            // and leave a system-coloured ring around the gradient on certain
+            // widget sizes (the visual bug the user reported).
             SuiWidgetEntryView(entry: entry)
-                // Neutral system background so HomeWidgetChrome's tinted gradient
-                // composites identically in light + dark mode. Lock Screen
-                // widgets ignore this — iOS tints them monochrome.
-                .containerBackground(for: .widget) {
-                    Color(.systemBackground)
-                }
         }
         .configurationDisplayName("Sui Portfolio")
         .description("Portfolio value, top tokens, NFTs, news and staking.")

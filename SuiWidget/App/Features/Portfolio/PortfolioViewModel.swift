@@ -258,7 +258,9 @@ final class PortfolioViewModel {
                 priceUSD: entry.holding.priceUSD,
                 priceChange24h: entry.holding.priceChange24h,
                 iconURL: entry.holding.iconURL,
-                isTracked: entry.holding.isTracked
+                isTracked: entry.holding.isTracked,
+                dappName: entry.holding.dappName,
+                underlyingCoinType: entry.holding.underlyingCoinType
             )
         }
 

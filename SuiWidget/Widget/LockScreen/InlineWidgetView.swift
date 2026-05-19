@@ -12,6 +12,9 @@ public struct InlineWidgetView: View {
         Text("⬡ SUI \(formatted(value)) \(deltaGlyph(pct)) \(String(format: "%.1f%%", abs(pct)))")
             .font(SuiTypography.pixelDisplay(15))
             .contentTransition(.numericText())
+            // Inline accessory widgets must install a container background
+            // (iOS 17+ widget API requirement) — clear lets iOS tint freely.
+            .containerBackground(for: .widget) { Color.clear }
             .animation(.default, value: entry)
             .accessibilityLabel("SUI portfolio \(formatted(value)) \(pct > 0 ? "up" : pct < 0 ? "down" : "flat") \(String(format: "%.1f", abs(pct))) percent")
     }

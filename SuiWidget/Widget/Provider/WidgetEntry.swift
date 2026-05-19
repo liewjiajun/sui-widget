@@ -63,17 +63,17 @@ public struct SuiWidgetEntry: TimelineEntry, Equatable {
                 change24hUSD: 67.20,
                 change24hPercent: 2.4,
                 topHoldings: [
-                    HoldingSummary(symbol: "SUI", balance: 1240.18, usdValue: 1860.27, change24h: 2.4),
-                    HoldingSummary(symbol: "USDC", balance: 500.00, usdValue: 500.00, change24h: 0.0),
-                    HoldingSummary(symbol: "DEEP", balance: 80000, usdValue: 481.23, change24h: -3.1),
+                    HoldingSummary(symbol: "SUI", balance: 1240.18, usdValue: 1860.27, change24h: 2.4, dappName: nil),
+                    HoldingSummary(symbol: "afSUI", balance: 500.00, usdValue: 750.0, change24h: 2.1, dappName: "Aftermath"),
+                    HoldingSummary(symbol: "USDC", balance: 481.23, usdValue: 481.23, change24h: 0.0, dappName: nil),
                 ]
             ),
             stakes: StakeSummary(totalSUI: 408.20, positionCount: 3, weightedAPY: 4.8),
             topNFTs: [
-                NFTSummary(objectId: "0x1", name: "Suins #1240"),
-                NFTSummary(objectId: "0x2", name: "Suins #842"),
-                NFTSummary(objectId: "0x3", name: "Pixel Frog"),
-                NFTSummary(objectId: "0x4", name: "Mysten OG"),
+                NFTSummary(objectId: "0x1", name: "Suins #1240", thumbnailFilePath: nil, imageURL: nil),
+                NFTSummary(objectId: "0x2", name: "Suins #842", thumbnailFilePath: nil, imageURL: nil),
+                NFTSummary(objectId: "0x3", name: "Pixel Frog", thumbnailFilePath: nil, imageURL: nil),
+                NFTSummary(objectId: "0x4", name: "Mysten OG", thumbnailFilePath: nil, imageURL: nil),
             ],
             topNews: [
                 NewsSummary(title: "Sui Foundation announces…", source: .blog, publishedAt: Date(), heroImageURL: nil),
@@ -139,11 +139,16 @@ public struct HoldingSummary: Sendable, Equatable {
     public let balance: Decimal
     public let usdValue: Decimal
     public let change24h: Double
-    public init(symbol: String, balance: Decimal, usdValue: Decimal, change24h: Double) {
+    /// When set, this holding is a wrapped DeFi position (LST, sCoin, etc.).
+    /// Widget views render a small "via <dapp>" caption so users can spot
+    /// which positions are tied up in external protocols.
+    public let dappName: String?
+    public init(symbol: String, balance: Decimal, usdValue: Decimal, change24h: Double, dappName: String? = nil) {
         self.symbol = symbol
         self.balance = balance
         self.usdValue = usdValue
         self.change24h = change24h
+        self.dappName = dappName
     }
 }
 
@@ -161,10 +166,24 @@ public struct StakeSummary: Sendable, Equatable {
 public struct NFTSummary: Sendable, Equatable, Identifiable {
     public let objectId: String
     public let name: String
+    /// File-system path to a pre-cached 200x200 widget thumbnail in the App
+    /// Group container, when one exists. Widgets load these synchronously
+    /// from disk so the timeline render never blocks on network.
+    public let thumbnailFilePath: String?
+    /// Remote image URL (possibly IPFS-rewritten) — used as the fallback when
+    /// the on-disk thumbnail hasn't been generated yet.
+    public let imageURL: String?
     public var id: String { objectId }
-    public init(objectId: String, name: String) {
+    public init(
+        objectId: String,
+        name: String,
+        thumbnailFilePath: String? = nil,
+        imageURL: String? = nil
+    ) {
         self.objectId = objectId
         self.name = name
+        self.thumbnailFilePath = thumbnailFilePath
+        self.imageURL = imageURL
     }
 }
 

@@ -28,6 +28,9 @@ public struct RectangularWidgetView: View {
                 .font(SuiTypography.mono(8))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        // Lock-screen widgets stay monochrome — iOS tints them — but every
+        // widget body must install a container background on iOS 17+.
+        .containerBackground(for: .widget) { Color.clear }
         .animation(.default, value: entry)
         .accessibilityLabel("Portfolio \(formatted(value)), \(pct >= 0 ? "up" : "down") \(String(format: "%.1f", abs(pct))) percent")
     }
