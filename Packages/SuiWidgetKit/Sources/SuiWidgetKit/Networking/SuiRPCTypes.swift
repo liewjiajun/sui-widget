@@ -102,23 +102,122 @@ public struct SuiOwnedObjectsPage: Decodable, Equatable, Sendable {
     public let data: [SuiOwnedObjectWrapper]
     public let nextCursor: String?
     public let hasNextPage: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case data, nextCursor, hasNextPage
+    }
+
+    public init(data: [SuiOwnedObjectWrapper], nextCursor: String?, hasNextPage: Bool) {
+        self.data = data
+        self.nextCursor = nextCursor
+        self.hasNextPage = hasNextPage
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        nextCursor = try c.decodeIfPresent(String.self, forKey: .nextCursor)
+        hasNextPage = try c.decodeIfPresent(Bool.self, forKey: .hasNextPage) ?? false
+        // Decode each owned-object element through FailableDecodable so a single
+        // malformed object (unexpected display shape, missing field, etc.) is
+        // dropped instead of aborting the whole page. Before this, one bad NFT
+        // surfaced as "expected to decode String" and the user lost every NFT
+        // on the page.
+        let failable = try c.decodeIfPresent(
+            [FailableDecodable<SuiOwnedObjectWrapper>].self, forKey: .data
+        ) ?? []
+        data = failable.compactMap(\.value)
+    }
 }
 
 public struct SuiOwnedObjectWrapper: Decodable, Equatable, Sendable {
     public let data: SuiOwnedObject?
+    public init(data: SuiOwnedObject?) { self.data = data }
 }
 
 public struct SuiOwnedObject: Decodable, Equatable, Sendable {
     public let objectId: String
     public let type: String?
     public let display: SuiDisplayContainer?
+    public init(objectId: String, type: String?, display: SuiDisplayContainer?) {
+        self.objectId = objectId
+        self.type = type
+        self.display = display
+    }
 }
 
 /// Sui returns `display` as `{ "data": <dict-or-null>, "error": <string-or-null> }`.
-/// We only need the resolved fields; both are optional.
+/// Display values are *nominally* strings, but real NFT collections regularly
+/// emit `null`, numeric or boolean values for individual keys (an unresolved
+/// template field, a numeric attribute, etc.). A plain `[String: String]`
+/// decode aborts the entire object — and, before page-level tolerance, the
+/// entire NFT list — on the first odd field. We decode leniently instead:
+/// scalars are coerced to their string form and nulls/containers are dropped.
 public struct SuiDisplayContainer: Decodable, Equatable, Sendable {
     public let data: [String: String]?
     public let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case data, error
+    }
+
+    public init(data: [String: String]?, error: String?) {
+        self.data = data
+        self.error = error
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        // `error` is non-critical metadata — never let it fail the decode.
+        error = (try? c.decodeIfPresent(String.self, forKey: .error)) ?? nil
+        if let rawMap = try c.decodeIfPresent([String: LenientScalar].self, forKey: .data) {
+            var coerced: [String: String] = [:]
+            for (key, scalar) in rawMap {
+                if let str = scalar.stringValue {
+                    coerced[key] = str
+                }
+            }
+            data = coerced
+        } else {
+            data = nil
+        }
+    }
+}
+
+// MARK: - Lenient decoding helpers
+
+/// Wraps a decode that may fail. The wrapper itself always decodes
+/// successfully — the inner failure is captured as a nil `value` — so an array
+/// of these can be decoded even when individual elements are malformed.
+struct FailableDecodable<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        value = try? container.decode(T.self)
+    }
+}
+
+/// Decodes a single JSON scalar (string / number / bool / null) and exposes it
+/// as an optional `String`. Used for Sui display maps whose values are
+/// nominally strings but occasionally arrive as nulls or numbers. Nested
+/// objects/arrays are not representable as a display string and decode to nil.
+struct LenientScalar: Decodable {
+    let stringValue: String?
+    init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() {
+            stringValue = nil
+        } else if let s = try? c.decode(String.self) {
+            stringValue = s
+        } else if let i = try? c.decode(Int.self) {
+            stringValue = String(i)
+        } else if let d = try? c.decode(Double.self) {
+            stringValue = String(d)
+        } else if let b = try? c.decode(Bool.self) {
+            stringValue = b ? "true" : "false"
+        } else {
+            stringValue = nil
+        }
+    }
 }
 
 // MARK: - suix_getStakes

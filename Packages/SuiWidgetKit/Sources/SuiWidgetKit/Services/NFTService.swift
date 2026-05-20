@@ -52,8 +52,12 @@ public struct NFTService {
             cursor = page.hasNextPage ? page.nextCursor : nil
         } while cursor != nil
 
-        // Filter to display-bearing objects (NFTs typically carry display metadata).
-        let displayObjects = allObjects.filter { $0.display?.data != nil }
+        // Filter to display-bearing objects (NFTs typically carry display
+        // metadata). Require a *non-empty* display map — after lenient display
+        // decoding an object whose every display value was null/non-string
+        // resolves to an empty dictionary, and surfacing those as "Untitled"
+        // imageless rows would just be noise in the gallery.
+        let displayObjects = allObjects.filter { !($0.display?.data?.isEmpty ?? true) }
 
         // Existing rows for upsert lookup.
         let existing = try modelContext.fetch(FetchDescriptor<CachedNFTItem>())
