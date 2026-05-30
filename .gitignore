@@ -18,8 +18,11 @@ Packages/*/.swiftpm/
 # macOS
 .DS_Store
 
-# Misc
-*.log
+# Design source (handoff assets — not part of the app build)
+design_handoff_sui_widget/
 
 # Local Claude Code session state
 .claude/
+
+# Misc
+*.log

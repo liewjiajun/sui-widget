@@ -85,4 +85,53 @@ struct KnownProtocolsTests {
         let afsuiShort = "0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI"
         #expect(KnownProtocols.enrichment(forCoinType: afsuiShort) != nil)
     }
+
+    /// Regression guard for the verification gap that mislabeled plain assets as
+    /// DeFi positions: a base/spendable asset must NEVER enrich. If this fails, a
+    /// user's plain SUI / USDC / WAL / DEEP / SCA / BUCK would be tagged as a
+    /// (wrongly-priced) protocol position.
+    @Test func base_assets_never_enrich_as_defi_positions() {
+        let bases = [
+            "0x2::sui::SUI",
+            "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL",
+            "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP",
+            "0x7016aae72cfc67f2fadf55769c0a7dd54291a583b63051a5ed71081cce836ac6::sca::SCA",
+            "0xce7ff77a83ea0cb6fd39bd8748e2ec89a3f41e8efdc3f4eb123e0ca37b184db2::buck::BUCK",
+        ]
+        for base in bases {
+            #expect(KnownProtocols.enrichment(forCoinType: base) == nil,
+                    "base asset \(base) must not be tagged as a DeFi position")
+        }
+    }
+
+    /// The expanded registry carries broad, non-trivial coverage. Lower bound
+    /// only, so adding protocols never breaks the test.
+    @Test func registry_has_broad_coverage() {
+        #expect(KnownProtocols.registeredCoinTypeCount >= 45)
+    }
+
+    /// Spot-checks across newly-added protocols: each enriches with the right
+    /// dapp + category, and its underlying differs from its own coin type.
+    @Test func new_protocols_enrich_correctly() {
+        struct Case { let ct: String; let dapp: String; let cat: KnownProtocols.Category }
+        let cases = [
+            // Scallop newer standalone sCoin (not the legacy MarketCoin form).
+            Case(ct: "0xaafc4f740de0dd0dde642a31148fb94517087052f19afb0f7bed1dc41a50c77b::scallop_sui::SCALLOP_SUI", dapp: "Scallop", cat: .lending),
+            // AlphaFi SuperSUI (basket LST).
+            Case(ct: "0x790f258062909e3a0ffc78b3c53ac2f62d7084c3bab95644bdeb05add7250001::super_sui::SUPER_SUI", dapp: "AlphaFi", cat: .liquidStaking),
+            // Walrus liquid-staked WAL.
+            Case(ct: "0xb1b0650a8862e30e3f604fd6c5838bc25464b8d3d827fbd58af7cb9685b832bf::wwal::WWAL", dapp: "Walrus", cat: .liquidStaking),
+        ]
+        for c in cases {
+            guard let e = KnownProtocols.enrichment(forCoinType: c.ct) else {
+                #expect(Bool(false), "expected enrichment for \(c.ct)")
+                continue
+            }
+            #expect(e.dappName == c.dapp, "\(c.ct) dapp \(e.dappName) != \(c.dapp)")
+            #expect(e.category == c.cat)
+            #expect(CoinTypeCanonicalizer.canonicalize(c.ct) != e.underlyingCanonicalCoinType,
+                    "receipt must not be its own underlying: \(c.ct)")
+        }
+    }
 }
