@@ -57,6 +57,10 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSCameraUsageDescription: "Sui Widget uses the camera to scan QR codes containing Sui wallet addresses."
+        CFBundleURLTypes:
+          - CFBundleURLName: io.sui.widget.deeplink
+            CFBundleURLSchemes:
+              - suiwidget
         UIAppFonts:
           - VT323-Regular.ttf
         BGTaskSchedulerPermittedIdentifiers:
@@ -94,6 +98,12 @@ targets:
     platform: iOS
     sources:
       - path: SuiWidget/Tests/SuiWidgetTests
+    settings:
+      base:
+        # Generate an Info.plist for the test bundle. Without this, code signing
+        # fails ("target does not have an Info.plist file"), which broke
+        # `xcodebuild test` entirely (and therefore CI's test job).
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: SuiWidget
 
@@ -102,6 +112,9 @@ targets:
     platform: iOS
     sources:
       - path: SuiWidget/Tests/SuiWidgetUITests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: SuiWidget
 

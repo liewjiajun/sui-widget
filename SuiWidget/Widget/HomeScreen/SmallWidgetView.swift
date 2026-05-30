@@ -23,7 +23,7 @@ public struct SmallWidgetView: View {
                 }
             }
             Spacer()
-            PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 24)
+            PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, currency: entry.configuration.currency, size: 24)
             DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0)
             PixelSparkline(
                 points: entry.sparklinePoints.map { ($0 as NSDecimalNumber).doubleValue },

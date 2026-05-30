@@ -125,7 +125,11 @@ public struct CoinGeckoClient {
         }
 
         do {
-            return try JSONDecoder().decode([CoinGeckoMarket].self, from: data)
+            // Decode element-wise so one malformed market entry doesn't abort the
+            // whole batch (mirrors the lenient NFT-page decoding). A dropped entry
+            // simply leaves that token unpriced for the cycle.
+            let failable = try JSONDecoder().decode([FailableDecodable<CoinGeckoMarket>].self, from: data)
+            return failable.compactMap(\.value)
         } catch {
             throw CoinGeckoError.decodingFailed(detail: String(describing: error))
         }
@@ -165,15 +169,59 @@ public struct CoinGeckoClient {
         }
     }
 
+    /// USD→fiat rates for the given ISO codes (e.g. ["EUR","SGD"]), derived from
+    /// USD-Coin's price in each currency (USDC is pegged ~1:1 to USD, so its
+    /// price in EUR *is* the USD→EUR rate). Returns `[code: rate]` uppercased.
+    /// Used by `FXRateStore` to present USD-denominated portfolios in the user's
+    /// chosen display currency.
+    public func fetchFiatRatesVsUSD(codes: [String]) async throws -> [String: Double] {
+        let lowered = codes.map { $0.lowercased() }.filter { $0 != "usd" }
+        guard !lowered.isEmpty else { return [:] }
+
+        var components = URLComponents(url: Self.baseURL.appendingPathComponent("simple/price"), resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "ids", value: "usd-coin"),
+            URLQueryItem(name: "vs_currencies", value: lowered.joined(separator: ",")),
+        ]
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+
+        let data: Data
+        let response: HTTPURLResponse
+        do {
+            (data, response) = try await http.send(request)
+        } catch let err as HTTPClientError {
+            if case .exhausted(let status, _) = err, status == 429 {
+                throw CoinGeckoError.rateLimitExceeded
+            }
+            throw CoinGeckoError.http(err)
+        }
+        guard (200...299).contains(response.statusCode) else {
+            throw CoinGeckoError.http(.clientError(response.statusCode))
+        }
+
+        // Shape: { "usd-coin": { "eur": 0.92, "sgd": 1.34, ... } }
+        let decoded: [String: [String: Double]]
+        do {
+            decoded = try JSONDecoder().decode([String: [String: Double]].self, from: data)
+        } catch {
+            throw CoinGeckoError.decodingFailed(detail: String(describing: error))
+        }
+        guard let byCurrency = decoded["usd-coin"] else { return [:] }
+        var result: [String: Double] = [:]
+        for (k, v) in byCurrency where v > 0 {
+            result[k.uppercased()] = v
+        }
+        return result
+    }
+
     // MARK: - Internal helpers
 
     private func fetchOrCreateAppSettings() throws -> AppSettings {
-        let existing = try modelContext.fetch(FetchDescriptor<AppSettings>())
-        if let s = existing.first { return s }
-        let new = AppSettings()
-        modelContext.insert(new)
-        try modelContext.save()
-        return new
+        // Routed through the singleton helper so app / widget / background
+        // contexts all converge on one AppSettings row.
+        AppSettings.current(in: modelContext)
     }
 
     private func fetchCachedMappings() throws -> [CoinTypeMapping] {

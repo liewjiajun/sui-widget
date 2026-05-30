@@ -119,6 +119,14 @@ final class PortfolioViewModel {
                 loadCachedStakes()
             }
             startForegroundTimer()
+            // Spec: "refresh immediately on launch." Cached data is already on
+            // screen (above); kick a silent network refresh so returning users
+            // see fresh numbers and the shared widget store is repopulated even
+            // when they never pull-to-refresh. Silent = don't flash a spinner
+            // over data we already have.
+            if !wallets.isEmpty {
+                Task { await self.refresh(silent: true) }
+            }
         } catch {
             loadState = .error(message: "Failed to load wallets: \(error.localizedDescription)", retry: nil)
         }
@@ -160,7 +168,9 @@ final class PortfolioViewModel {
         foregroundTimer?.invalidate()
         foregroundTimer = Timer.scheduledTimer(withTimeInterval: Double(minutes) * 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                await self?.refresh()
+                // Periodic background refresh — don't blank the screen with a
+                // spinner while the user is looking at it.
+                await self?.refresh(silent: true)
             }
         }
     }
@@ -260,7 +270,8 @@ final class PortfolioViewModel {
                 iconURL: entry.holding.iconURL,
                 isTracked: entry.holding.isTracked,
                 dappName: entry.holding.dappName,
-                underlyingCoinType: entry.holding.underlyingCoinType
+                underlyingCoinType: entry.holding.underlyingCoinType,
+                defiCategory: entry.holding.defiCategory
             )
         }
 
@@ -291,8 +302,12 @@ final class PortfolioViewModel {
         stakeSummary = StakeSummary(totalUSD: total, positionCount: positions.count)
     }
 
-    func refresh() async {
-        loadState = .loading
+    func refresh(silent: Bool = false) async {
+        // Silent refresh keeps cached data visible (no loading spinner) unless we
+        // have nothing to show yet.
+        if !silent || (portfolio == nil && aggregate == nil) {
+            loadState = .loading
+        }
         refreshError = nil
         if let walletId = selectedWalletId {
             await refreshSingleWallet(walletId: walletId)
@@ -331,6 +346,9 @@ final class PortfolioViewModel {
         // Refresh hourly price-history for tracked tokens so the widget's
         // sparkline picks up fresh data.
         await priceHistoryService.refreshAll()
+        // Refresh USD→fiat rates (daily TTL) so widgets configured for a
+        // non-USD currency can convert the USD-denominated totals.
+        await FXRateStore.shared.refreshIfStale(coinGecko: CoinGeckoClient(modelContext: modelContext))
         // Tell the widget extension the shared SwiftData store has fresh
         // data so its next timeline render reflects the user-visible refresh.
         WidgetCenter.shared.reloadAllTimelines()
@@ -383,6 +401,7 @@ final class PortfolioViewModel {
         loadCachedAggregate()
         loadAggregateStakes()
         await priceHistoryService.refreshAll()
+        await FXRateStore.shared.refreshIfStale(coinGecko: CoinGeckoClient(modelContext: modelContext))
         WidgetCenter.shared.reloadAllTimelines()
         if let lastError {
             refreshError = partialErrors.joined(separator: " · ")

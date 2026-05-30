@@ -42,6 +42,12 @@ public struct NFTService {
 
         var allObjects: [SuiOwnedObject] = []
         var cursor: String? = nil
+        // Safety cap: 20 pages × 50 = 1000 objects. A spec-compliant node stops
+        // via hasNextPage; the cap only guards against a misbehaving node that
+        // keeps returning hasNextPage=true with a non-advancing cursor (which
+        // would otherwise spin forever).
+        var pagesFetched = 0
+        let maxPages = 20
         repeat {
             let page = try await sui.getOwnedObjects(owner: owner, limit: 50, cursor: cursor)
             for wrapper in page.data {
@@ -49,7 +55,8 @@ public struct NFTService {
                     allObjects.append(obj)
                 }
             }
-            cursor = page.hasNextPage ? page.nextCursor : nil
+            pagesFetched += 1
+            cursor = (page.hasNextPage && pagesFetched < maxPages) ? page.nextCursor : nil
         } while cursor != nil
 
         // Filter to display-bearing objects (NFTs typically carry display
@@ -146,9 +153,12 @@ public struct NFTService {
                             objectId: objectId,
                             remoteURL: imageURL
                         )
+                        // Persist only the filename — absolute App Group paths
+                        // aren't stable across launches; ThumbnailLocator
+                        // re-resolves against the current container at read time.
                         try? await writeActor.writeThumbnailPath(
                             objectId: objectId,
-                            path: result.widgetURL.path
+                            path: result.widgetURL.lastPathComponent
                         )
                     } catch {
                         // Best-effort — the next NFT refresh will reconcile.

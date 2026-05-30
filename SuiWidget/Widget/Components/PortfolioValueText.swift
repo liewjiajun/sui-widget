@@ -2,13 +2,15 @@ import SwiftUI
 import SuiWidgetKit
 
 public struct PortfolioValueText: View {
+    /// USD-denominated value. Converted to `currency` for display via
+    /// `WidgetCurrencyFormatter` (with a USD fallback when no FX rate is cached).
     public let value: Decimal
-    public let currencySymbol: String
+    public let currency: CurrencyOption
     public let size: CGFloat
 
-    public init(value: Decimal, currencySymbol: String = "$", size: CGFloat) {
+    public init(value: Decimal, currency: CurrencyOption = .usd, size: CGFloat) {
         self.value = value
-        self.currencySymbol = currencySymbol
+        self.currency = currency
         self.size = size
     }
 
@@ -22,11 +24,12 @@ public struct PortfolioValueText: View {
     }
 
     private var formatted: String {
+        let (effective, converted) = WidgetCurrencyFormatter.resolve(usdValue: value, currency: currency)
         let f = NumberFormatter()
         f.numberStyle = .decimal
-        f.maximumFractionDigits = value > 10_000 ? 0 : 2
-        f.minimumFractionDigits = value > 10_000 ? 0 : 2
-        let str = f.string(from: value as NSDecimalNumber) ?? "0"
-        return "\(currencySymbol)\(str)"
+        f.maximumFractionDigits = converted > 10_000 ? 0 : 2
+        f.minimumFractionDigits = converted > 10_000 ? 0 : 2
+        let str = f.string(from: converted as NSDecimalNumber) ?? "0"
+        return "\(effective.symbol)\(str)"
     }
 }

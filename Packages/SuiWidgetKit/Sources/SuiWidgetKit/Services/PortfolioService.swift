@@ -74,12 +74,15 @@ public struct PortfolioService {
             trackedIds.append(suiMapping.coingeckoId)
         }
 
-        // 4. Batch prices.
+        // 4. Batch prices. Dedupe ids — multiple holdings can map to the same
+        //    CoinGecko id (e.g. SUI plus an LST priced via SUI), and duplicate
+        //    ids waste the query budget and can confuse the response mapping.
+        let uniqueTrackedIds = Array(Set(trackedIds))
         let prices: [CoinGeckoMarket]
-        if trackedIds.isEmpty {
+        if uniqueTrackedIds.isEmpty {
             prices = []
         } else {
-            prices = try await coinGecko.fetchPrices(coingeckoIds: trackedIds)
+            prices = try await coinGecko.fetchPrices(coingeckoIds: uniqueTrackedIds)
         }
         let priceById: [String: CoinGeckoMarket] = Dictionary(
             uniqueKeysWithValues: prices.map { ($0.id, $0) }
@@ -106,19 +109,28 @@ public struct PortfolioService {
                     canonical: canonicalCoinType,
                     rawCoinType: balance.coinType
                 )
-                let unit = pow(10.0, Double(decimals))
-                let amountDouble = NSDecimalNumber(decimal: balance.totalBalance).doubleValue / unit
-                let amount = Decimal(amountDouble)
+                // Pure-Decimal base-unit conversion. Routing through Double would
+                // truncate a u64 balance (up to 20 digits) to ~15-16 significant
+                // digits and reintroduce float noise via Decimal(Double); dividing
+                // by a Decimal power-of-ten is exact in base-10.
+                let amount = balance.totalBalance / pow(Decimal(10), decimals)
 
                 let market = priceById[mapping.coingeckoId]
-                let priceUSD = market?.currentPrice
+                // currentPrice is now optional (CoinGecko sends null for unpriced
+                // coins); flatten the double-optional so nil routes through the
+                // existing "tracked but unpriced" path (contributes 0 to totals).
+                let priceUSD = market?.currentPrice ?? nil
                 let change24h = market?.priceChangePercentage24h
 
                 if let priceUSD {
                     portfolioToday += amount * priceUSD
                     if let change24h {
                         let factor = Decimal(1 + change24h / 100)
-                        if factor != 0 {
+                        // Guard on sign, not just zero: a thin/erroneous feed can
+                        // report change < -100%, making factor negative — dividing
+                        // by it would flip the sign and corrupt the snapshot delta.
+                        // Treat any change ≤ -100% as degenerate → use today's price.
+                        if factor > 0 {
                             let yesterdayPrice = priceUSD / factor
                             portfolioYesterday += amount * yesterdayPrice
                         } else {
@@ -155,7 +167,8 @@ public struct PortfolioService {
                     iconURL: market?.image,
                     isTracked: true,
                     dappName: enrichment?.dappName,
-                    underlyingCoinType: enrichment?.underlyingCanonicalCoinType
+                    underlyingCoinType: enrichment?.underlyingCanonicalCoinType,
+                    defiCategory: enrichment?.category.rawValue
                 ))
             } else {
                 // Untracked token. Try to surface real symbol/name/decimals
@@ -163,9 +176,8 @@ public struct PortfolioService {
                 // short-symbol when the RPC fails.
                 let metadata = try? await sui.getCoinMetadata(coinType: balance.coinType)
                 let decimals = metadata?.decimals ?? 9
-                let unit = pow(10.0, Double(decimals))
-                let amountDouble = NSDecimalNumber(decimal: balance.totalBalance).doubleValue / unit
-                let amount = Decimal(amountDouble)
+                // Pure-Decimal conversion (see tracked path above).
+                let amount = balance.totalBalance / pow(Decimal(10), decimals)
 
                 let symbol = enrichment?.symbolOverride
                     ?? metadata?.symbol
@@ -185,7 +197,8 @@ public struct PortfolioService {
                     iconURL: metadata?.iconUrl,
                     isTracked: false,
                     dappName: enrichment?.dappName,
-                    underlyingCoinType: enrichment?.underlyingCanonicalCoinType
+                    underlyingCoinType: enrichment?.underlyingCanonicalCoinType,
+                    defiCategory: enrichment?.category.rawValue
                 ))
             }
         }
@@ -196,12 +209,13 @@ public struct PortfolioService {
         //     allocation breakdown remains coherent.
         if stakedSUI > 0, let suiMapping {
             let suiMarket = priceById[suiMapping.coingeckoId]
-            if let suiPrice = suiMarket?.currentPrice {
+            if let suiPrice = suiMarket?.currentPrice ?? nil {
                 let stakedTodayUSD = stakedSUI * suiPrice
                 portfolioToday += stakedTodayUSD
                 if let change24h = suiMarket?.priceChangePercentage24h {
                     let factor = Decimal(1 + change24h / 100)
-                    if factor != 0 {
+                    // Sign guard — see the tracked-token block above.
+                    if factor > 0 {
                         portfolioYesterday += stakedSUI * (suiPrice / factor)
                     } else {
                         portfolioYesterday += stakedTodayUSD

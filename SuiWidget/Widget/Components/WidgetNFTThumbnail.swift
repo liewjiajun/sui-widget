@@ -19,13 +19,12 @@ struct WidgetNFTThumbnail: View {
 
     var body: some View {
         Group {
-            if let path = nft.thumbnailFilePath,
-               FileManager.default.fileExists(atPath: path),
-               let image = UIImage(contentsOfFile: path) {
+            if let fileURL = ThumbnailLocator.fileURL(forStoredReference: nft.thumbnailFilePath),
+               let image = UIImage(contentsOfFile: fileURL.path) {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-            } else if let urlString = nft.imageURL, let url = URL(string: urlString) {
+            } else if let url = Self.displayURL(for: nft.imageURL) {
                 AsyncImage(url: url) { phase in
                     if let image = phase.image {
                         image
@@ -41,6 +40,13 @@ struct WidgetNFTThumbnail: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+    }
+
+    /// First fetchable candidate URL for a (possibly IPFS) image string, or nil.
+    /// AsyncImage can't load the ipfs scheme, so rewrite to an https gateway.
+    private static func displayURL(for raw: String?) -> URL? {
+        guard let raw, !raw.isEmpty else { return nil }
+        return IPFSGatewayResolver().candidates(for: raw).first
     }
 
     private var plaque: some View {

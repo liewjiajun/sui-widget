@@ -25,9 +25,7 @@ struct NFTThumbnailView: View {
         // previous URL(string:) form silently produced nil for absolute paths
         // without a scheme, which suppressed the remote-image fallback and left
         // the grid showing initials when the cache was missing.
-        if let path = nft.thumbnailFilePath,
-           FileManager.default.fileExists(atPath: path) {
-            let url = URL(fileURLWithPath: path)
+        if let url = ThumbnailLocator.fileURL(forStoredReference: nft.thumbnailFilePath) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
@@ -47,7 +45,11 @@ struct NFTThumbnailView: View {
 
     @ViewBuilder
     private var remoteOrFallback: some View {
-        if let url = URL(string: nft.imageURL), !nft.imageURL.isEmpty {
+        // Rewrite ipfs:// (and gateway-prefixed) URLs to a fetchable https gateway
+        // before handing them to AsyncImage — AsyncImage cannot load the ipfs
+        // scheme, so a raw ipfs:// URL silently fell through to the initials
+        // placeholder even when the image existed.
+        if let url = Self.displayURL(for: nft.imageURL) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .success(let image):
@@ -63,6 +65,12 @@ struct NFTThumbnailView: View {
         } else {
             fallback
         }
+    }
+
+    /// First fetchable candidate URL for a (possibly IPFS) image string, or nil.
+    private static func displayURL(for raw: String) -> URL? {
+        guard !raw.isEmpty else { return nil }
+        return IPFSGatewayResolver().candidates(for: raw).first
     }
 
     private var fallback: some View {

@@ -20,11 +20,7 @@ public struct InlineWidgetView: View {
     }
 
     private func formatted(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 0
-        return f.string(from: value as NSDecimalNumber) ?? "$0"
+        WidgetCurrencyFormatter.compact(usdValue: value, currency: entry.configuration.currency)
     }
 
     private func deltaGlyph(_ pct: Double) -> String {

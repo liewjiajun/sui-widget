@@ -12,7 +12,7 @@ public struct RectangularWidgetView: View {
         VStack(alignment: .leading, spacing: 1) {
             Text("PORTFOLIO").font(SuiTypography.mono(8, weight: .bold))
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(formatted(value))
+                Text(WidgetCurrencyFormatter.compact(usdValue: value, currency: entry.configuration.currency))
                     .font(SuiTypography.pixelDisplay(22))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -36,11 +36,7 @@ public struct RectangularWidgetView: View {
     }
 
     private func formatted(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 0
-        return f.string(from: value as NSDecimalNumber) ?? "$0"
+        WidgetCurrencyFormatter.compact(usdValue: value, currency: entry.configuration.currency)
     }
 
     private func deltaGlyph(_ pct: Double) -> String {

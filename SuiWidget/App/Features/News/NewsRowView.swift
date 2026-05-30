@@ -87,11 +87,12 @@ struct NewsRowView: View {
         switch item.source {
         case .blog: return "newspaper"
         case .githubRelease: return "shippingbox"
+        case .unknown: return "newspaper"
         }
     }
 
     private var sourcePill: some View {
-        Text(item.source == .blog ? "BLOG" : "RELEASE")
+        Text(item.source.displayLabel.uppercased())
             .font(SuiTypography.mono(9, weight: .bold))
             .padding(.horizontal, SuiSpacing.s2)
             .padding(.vertical, 2)

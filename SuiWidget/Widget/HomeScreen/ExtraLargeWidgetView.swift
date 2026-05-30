@@ -18,7 +18,7 @@ public struct ExtraLargeWidgetView: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 46)
+                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, currency: entry.configuration.currency, size: 46)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
             }
 
@@ -44,7 +44,7 @@ public struct ExtraLargeWidgetView: View {
                                 }
                             }
                             Spacer()
-                            Text(usd(h.usdValue))
+                            Text(WidgetCurrencyFormatter.compact(usdValue: h.usdValue, currency: entry.configuration.currency))
                                 .font(SuiTypography.mono(10))
                                 .contentTransition(.numericText())
                             DeltaGlyph(percent: h.change24h, size: 9)
@@ -66,7 +66,7 @@ public struct ExtraLargeWidgetView: View {
                                 Text(item.title)
                                     .font(SuiTypography.body(10, weight: .semibold))
                                     .lineLimit(2)
-                                Text(item.source.rawValue.uppercased())
+                                Text(item.source.displayLabel.uppercased())
                                     .font(SuiTypography.mono(7))
                                     .foregroundStyle(.secondary)
                             }
@@ -113,13 +113,5 @@ public struct ExtraLargeWidgetView: View {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
         return "↻ \(f.string(from: entry.date))"
-    }
-
-    private func usd(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 0
-        return f.string(from: value as NSDecimalNumber) ?? "$0"
     }
 }

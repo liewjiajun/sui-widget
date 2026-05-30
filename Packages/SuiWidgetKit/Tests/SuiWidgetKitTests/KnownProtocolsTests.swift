@@ -20,6 +20,28 @@ struct KnownProtocolsTests {
         #expect(KnownProtocols.enrichment(forCoinType: hasui)?.dappName == "Haedal")
     }
 
+    @Test func lsts_are_categorised_as_liquid_staking() {
+        for coinType in [
+            "0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI",
+            "0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT",
+            "0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI",
+        ] {
+            #expect(KnownProtocols.enrichment(forCoinType: coinType)?.category == .liquidStaking)
+        }
+    }
+
+    @Test func expanded_lst_set_includes_alphafi_and_springsui() {
+        let stsui = "0xd1b72982e40348d069bb1ff701e634c117bb5f741f44dff91e472d3b01461e55::stsui::STSUI"
+        let ssui = "0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::spring_sui::SPRING_SUI"
+        let alphafi = KnownProtocols.enrichment(forCoinType: stsui)
+        #expect(alphafi?.dappName == "AlphaFi")
+        #expect(alphafi?.symbolOverride == "stSUI")
+        #expect(alphafi?.category == .liquidStaking)
+        let spring = KnownProtocols.enrichment(forCoinType: ssui)
+        #expect(spring?.dappName == "SpringSui")
+        #expect(spring?.category == .liquidStaking)
+    }
+
     @Test func scallop_market_coin_extracts_underlying_type() {
         // <scallop-pkg>::reserve::MarketCoin<0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC>
         let scallopUsdc = KnownProtocols.scallopPackage
@@ -28,6 +50,7 @@ struct KnownProtocolsTests {
         #expect(result?.dappName == "Scallop")
         #expect(result?.symbolOverride == "sUSDC")
         #expect(result?.underlyingCanonicalCoinType.hasSuffix("::usdc::USDC") == true)
+        #expect(result?.category == .lending)
     }
 
     @Test func unknown_coin_type_returns_nil() {

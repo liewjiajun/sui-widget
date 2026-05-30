@@ -130,8 +130,35 @@ extension MockURLProtocolSuite {
             // Fixture may have an empty data array; either result is acceptable as long as decoding succeeded.
             if let name {
                 #expect(!name.isEmpty)
-                let stored = try context.fetch(FetchDescriptor<CachedSuiNSResolution>())
-                #expect(stored.count == 1)
+                // Reverse results are cached in CachedSuiNSReverse (keyed by
+                // address) ...
+                let reverse = try context.fetch(FetchDescriptor<CachedSuiNSReverse>())
+                #expect(reverse.count == 1)
+                #expect(reverse.first?.address == addr.rawValue)
+                #expect(reverse.first?.name == name)
+                // ... and must NOT leak into the forward (name → address) table,
+                // since forward and reverse lookups aren't guaranteed inverses.
+                let forward = try context.fetch(FetchDescriptor<CachedSuiNSResolution>())
+                #expect(forward.isEmpty)
+            }
+        }
+
+        @Test func reverse_resolve_uses_cache_on_second_call() async throws {
+            MockURLProtocol.reset()
+            let body = try FixtureLoader.data(named: "sui-resolveNameServiceNames-success.json")
+            MockURLProtocol.handler = { _ in (200, body, [:], nil) }
+
+            let context = try makeContext()
+            let resolver = SuiNSResolver(rpc: makeRPC(), modelContext: context)
+            let addr = SuiAddress(rawValue: "0x" + String(repeating: "b", count: 64))!
+            let first = try await resolver.reverseResolve(address: addr)
+            // Only assert cache-hit behavior when the fixture actually yielded a name.
+            if first != nil {
+                let observedAfterFirst = MockURLProtocol.requestsObserved.count
+                let second = try await resolver.reverseResolve(address: addr)
+                #expect(second == first)
+                #expect(MockURLProtocol.requestsObserved.count == observedAfterFirst,
+                        "second reverse resolve should hit the cache")
             }
         }
     }

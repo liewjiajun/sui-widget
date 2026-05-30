@@ -20,3 +20,6 @@ Packages/*/.swiftpm/
 
 # Misc
 *.log
+
+# Local Claude Code session state
+.claude/

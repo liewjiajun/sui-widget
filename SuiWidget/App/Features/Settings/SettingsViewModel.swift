@@ -63,12 +63,8 @@ final class SettingsViewModel {
     }
 
     func load() {
-        let descriptor = FetchDescriptor<AppSettings>()
-        let settings = (try? modelContext.fetch(descriptor).first) ?? AppSettings()
-        if (try? modelContext.fetch(descriptor).first) == nil {
-            modelContext.insert(settings)
-            try? modelContext.save()
-        }
+        // Singleton row shared with every other context (widget, background).
+        let settings = AppSettings.current(in: modelContext)
         theme = AppTheme(rawValue: settings.theme) ?? .system
         defaultCurrency = DefaultCurrency(rawValue: settings.defaultCurrency.lowercased()) ?? .usd
         showUntrackedTokens = settings.showUntrackedTokens
@@ -77,8 +73,7 @@ final class SettingsViewModel {
     }
 
     func save() {
-        let descriptor = FetchDescriptor<AppSettings>()
-        let settings = (try? modelContext.fetch(descriptor).first) ?? AppSettings()
+        let settings = AppSettings.current(in: modelContext)
         let previousMinutes = settings.refreshFrequencyMinutes
         settings.theme = theme.rawValue
         settings.defaultCurrency = defaultCurrency.rawValue.uppercased()

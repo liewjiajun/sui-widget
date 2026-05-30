@@ -85,23 +85,30 @@ public struct SuiNSResolver {
     }
 
     /// Reverse-resolves an address to its first SuiNS name, or nil if none registered.
-    /// Persists the result on success (sharing the same CachedSuiNSResolution table —
-    /// the cached row exists under the resolved name).
+    ///
+    /// Cached in `CachedSuiNSReverse` (keyed by address) — NEVER in the forward
+    /// (`CachedSuiNSResolution`) table. Forward (name→address) and reverse
+    /// (address→name) lookups are not guaranteed inverses, so writing a reverse
+    /// result into the forward cache could make a later `resolve(name)` return an
+    /// address the name doesn't actually point to (see CachedSuiNSReverse).
     public func reverseResolve(address: SuiAddress) async throws -> String? {
+        let now = clock.now()
+        if let cached = try fetchCachedReverse(address: address.rawValue),
+           now.timeIntervalSince(cached.resolvedAt) < cacheTTL {
+            return cached.name
+        }
         do {
             let names = try await rpc.resolveNameServiceNames(address: address)
             guard let first = names.first else { return nil }
             let canonical = first.lowercased()
-            // Upsert into the cache.
-            let now = clock.now()
-            if let cached = try fetchCachedResolution(name: canonical) {
-                cached.address = address.rawValue
-                cached.cachedAt = now
+            if let cached = try fetchCachedReverse(address: address.rawValue) {
+                cached.name = canonical
+                cached.resolvedAt = now
             } else {
-                modelContext.insert(CachedSuiNSResolution(
-                    name: canonical,
+                modelContext.insert(CachedSuiNSReverse(
                     address: address.rawValue,
-                    cachedAt: now
+                    name: canonical,
+                    resolvedAt: now
                 ))
             }
             try modelContext.save()
@@ -116,6 +123,14 @@ public struct SuiNSResolver {
     private func fetchCachedResolution(name: String) throws -> CachedSuiNSResolution? {
         var descriptor = FetchDescriptor<CachedSuiNSResolution>(
             predicate: #Predicate { $0.name == name }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func fetchCachedReverse(address: String) throws -> CachedSuiNSReverse? {
+        var descriptor = FetchDescriptor<CachedSuiNSReverse>(
+            predicate: #Predicate { $0.address == address }
         )
         descriptor.fetchLimit = 1
         return try modelContext.fetch(descriptor).first

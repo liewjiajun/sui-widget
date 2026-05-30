@@ -115,6 +115,10 @@ struct PortfolioView: View {
                             .buttonStyle(.plain)
                         }
                         tokenSection(portfolio: portfolio)
+                        EarningSectionView(
+                            positions: portfolio.tokens.filter(\.isDeFiPosition),
+                            colorByCoinType: colorByCoinType(for: portfolio.tokens)
+                        )
                     } else {
                         firstSyncPrompt(viewModel: viewModel)
                     }
@@ -186,44 +190,12 @@ struct PortfolioView: View {
                 .buttonStyle(.plain)
             }
 
-            aggregateTokenSection(tokens: aggregate.tokens)
-        }
-    }
-
-    @ViewBuilder
-    private func aggregateTokenSection(tokens: [CachedTokenHolding]) -> some View {
-        VStack(alignment: .leading, spacing: SuiSpacing.s2) {
-            Text("TOKENS · \(tokens.count)")
-                .font(SuiTypography.mono(10, weight: .bold))
-                .foregroundStyle(.secondary)
-            VStack(spacing: 0) {
-                let slices = PortfolioDonutView.slices(fromTokens: tokens)
-                let colorByCoinType: [String: Color] = Dictionary(
-                    uniqueKeysWithValues: tokens.filter(\.isTracked).enumerated().compactMap { idx, h in
-                        guard let slice = slices.first(where: { $0.label == h.symbol }) else {
-                            return nil
-                        }
-                        _ = idx
-                        return (h.coinType, slice.color)
-                    }
-                )
-                let sortedTokens = tokens.sorted { tokenSortValue($0) > tokenSortValue($1) }
-                ForEach(sortedTokens, id: \.id) { holding in
-                    NavigationLink {
-                        TokenDetailView(holding: holding)
-                    } label: {
-                        TokenRowView(holding: holding, sliceColor: colorByCoinType[holding.coinType])
-                    }
-                    .buttonStyle(.plain)
-                    if holding.id != sortedTokens.last?.id {
-                        Divider()
-                    }
-                }
-            }
-            .padding(SuiSpacing.s2)
-            .background(
-                RoundedRectangle(cornerRadius: SuiSpacing.cardRadius, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
+            // Spendable tokens, then the Earning section for deployed positions.
+            tokenList(tokens: aggregate.tokens.filter { !$0.isDeFiPosition },
+                      colorSource: aggregate.tokens)
+            EarningSectionView(
+                positions: aggregate.tokens.filter(\.isDeFiPosition),
+                colorByCoinType: colorByCoinType(for: aggregate.tokens)
             )
         }
     }
@@ -287,40 +259,54 @@ struct PortfolioView: View {
 
     @ViewBuilder
     private func tokenSection(portfolio: CachedPortfolio) -> some View {
-        VStack(alignment: .leading, spacing: SuiSpacing.s2) {
-            Text("TOKENS · \(portfolio.tokens.count)")
-                .font(SuiTypography.mono(10, weight: .bold))
-                .foregroundStyle(.secondary)
-            VStack(spacing: 0) {
-                let slices = PortfolioDonutView.slices(from: portfolio)
-                let colorByCoinType: [String: Color] = Dictionary(
-                    uniqueKeysWithValues: portfolio.tokens.filter(\.isTracked).enumerated().compactMap { idx, h in
-                        guard let slice = slices.first(where: { $0.label == h.symbol }) else {
-                            return nil
+        // Spendable wallet balances only — DeFi positions move to the Earning
+        // section so the value isn't listed twice.
+        tokenList(tokens: portfolio.tokens.filter { !$0.isDeFiPosition },
+                  colorSource: portfolio.tokens)
+    }
+
+    /// Shared token-list card used by both single-wallet and aggregate modes.
+    @ViewBuilder
+    private func tokenList(tokens: [CachedTokenHolding], colorSource: [CachedTokenHolding]) -> some View {
+        if !tokens.isEmpty {
+            VStack(alignment: .leading, spacing: SuiSpacing.s2) {
+                Text("TOKENS · \(tokens.count)")
+                    .font(SuiTypography.mono(10, weight: .bold))
+                    .foregroundStyle(.secondary)
+                VStack(spacing: 0) {
+                    let colors = colorByCoinType(for: colorSource)
+                    let sortedTokens = tokens.sorted { tokenSortValue($0) > tokenSortValue($1) }
+                    ForEach(sortedTokens, id: \.id) { holding in
+                        NavigationLink {
+                            TokenDetailView(holding: holding)
+                        } label: {
+                            TokenRowView(holding: holding, sliceColor: colors[holding.coinType])
                         }
-                        _ = idx
-                        return (h.coinType, slice.color)
-                    }
-                )
-                let sortedTokens = portfolio.tokens.sorted { tokenSortValue($0) > tokenSortValue($1) }
-                ForEach(sortedTokens, id: \.id) { holding in
-                    NavigationLink {
-                        TokenDetailView(holding: holding)
-                    } label: {
-                        TokenRowView(holding: holding, sliceColor: colorByCoinType[holding.coinType])
-                    }
-                    .buttonStyle(.plain)
-                    if holding.id != sortedTokens.last?.id {
-                        Divider()
+                        .buttonStyle(.plain)
+                        if holding.id != sortedTokens.last?.id {
+                            Divider()
+                        }
                     }
                 }
+                .padding(SuiSpacing.s2)
+                .background(
+                    RoundedRectangle(cornerRadius: SuiSpacing.cardRadius, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
             }
-            .padding(SuiSpacing.s2)
-            .background(
-                RoundedRectangle(cornerRadius: SuiSpacing.cardRadius, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-            )
         }
+    }
+
+    /// Maps each tracked token's coinType to its donut slice colour, so token
+    /// rows and Earning rows share the donut's palette.
+    private func colorByCoinType(for tokens: [CachedTokenHolding]) -> [String: Color] {
+        let slices = PortfolioDonutView.slices(fromTokens: tokens)
+        return Dictionary(
+            uniqueKeysWithValues: tokens.filter(\.isTracked).compactMap { h in
+                guard let slice = slices.first(where: { $0.label == h.symbol }) else { return nil }
+                return (h.coinType, slice.color)
+            }
+        )
     }
 
     private func tokenSortValue(_ holding: CachedTokenHolding) -> Decimal {

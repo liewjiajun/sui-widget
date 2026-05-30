@@ -23,6 +23,7 @@ public enum SwiftDataStack {
         CachedPriceHistory.self,
         CachedStakePosition.self,
         CachedSuiNSResolution.self,
+        CachedSuiNSReverse.self,
         CachedTokenHolding.self,
         CachedValidatorMetadata.self,
         Pet.self,
@@ -48,12 +49,30 @@ public enum SwiftDataStack {
                 schema: schema,
                 isStoredInMemoryOnly: true
             )
-        } else {
+        } else if FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: AppGroupStore.groupIdentifier
+        ) != nil {
+            // App Group entitlement present — bind the store to the shared
+            // container so the widget extension reads the same database.
             configuration = ModelConfiguration(
                 storeName,
                 schema: schema,
                 isStoredInMemoryOnly: false,
                 groupContainer: .identifier(AppGroupStore.groupIdentifier)
+            )
+        } else {
+            // App Group container is unavailable (e.g. the entitlement was
+            // stripped in an unsigned / `CODE_SIGNING_ALLOWED=NO` build, or
+            // misconfigured). Passing `.groupContainer` here makes SwiftData
+            // call `fatalError` deep inside `ModelContainer.init` — which a
+            // `try?`/`do-catch` cannot recover from — so the app would hard
+            // crash on launch. Fall back to a private on-disk store instead:
+            // the app still launches, and the widget simply sees an empty store
+            // (correct degradation rather than a crash).
+            configuration = ModelConfiguration(
+                storeName,
+                schema: schema,
+                isStoredInMemoryOnly: false
             )
         }
         return try ModelContainer(for: schema, configurations: configuration)

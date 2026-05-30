@@ -31,4 +31,18 @@ public final class AppSettings {
         self.lastCoinListFetchedAt = lastCoinListFetchedAt
         self.lastNewsFetchedAt = lastNewsFetchedAt
     }
+
+    /// The single shared settings row, creating it if absent. All callers should
+    /// route through this so app / widget / background contexts converge on the
+    /// one `.unique singletonKey` row even though each opens its own
+    /// `ModelContext` against the App Group store.
+    public static func current(in context: ModelContext) -> AppSettings {
+        if let existing = try? context.fetch(FetchDescriptor<AppSettings>()).first {
+            return existing
+        }
+        let created = AppSettings()
+        context.insert(created)
+        try? context.save()
+        return created
+    }
 }

@@ -20,7 +20,7 @@ public struct LargeWidgetView: View {
                 PetSlotView()
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 40)
+                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, currency: entry.configuration.currency, size: 40)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
                 Spacer()
             }
@@ -43,7 +43,7 @@ public struct LargeWidgetView: View {
                         Text(headline.title)
                             .font(SuiTypography.body(11, weight: .semibold))
                             .lineLimit(2)
-                        Text(headline.source.rawValue.uppercased())
+                        Text(headline.source.displayLabel.uppercased())
                             .font(SuiTypography.mono(7, weight: .bold))
                             .foregroundStyle(.secondary)
                     }
@@ -75,7 +75,7 @@ public struct LargeWidgetView: View {
                         }
                     }
                     Spacer()
-                    Text(usd(h.usdValue))
+                    Text(WidgetCurrencyFormatter.compact(usdValue: h.usdValue, currency: entry.configuration.currency))
                         .font(SuiTypography.mono(10))
                         .contentTransition(.numericText())
                     DeltaGlyph(percent: h.change24h, size: 9)
@@ -101,13 +101,5 @@ public struct LargeWidgetView: View {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
         return "↻ \(f.string(from: entry.date))"
-    }
-
-    private func usd(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 0
-        return f.string(from: value as NSDecimalNumber) ?? "$0"
     }
 }
