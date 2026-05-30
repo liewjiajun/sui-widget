@@ -44,16 +44,24 @@ public enum KnownProtocols {
         public let symbolOverride: String?
         public let underlyingCanonicalCoinType: String
         public let category: Category
+        /// The receipt coin's OWN on-chain decimals (not the underlying's),
+        /// live-verified and baked into the registry. Lets `PortfolioService`
+        /// convert base units without a refresh-time `getCoinMetadata` RPC —
+        /// critical for positions priced via their underlying (every Kai yToken)
+        /// where no price source reports the receipt's decimals.
+        public let decimals: Int?
         public init(
             dappName: String,
             symbolOverride: String? = nil,
             underlyingCanonicalCoinType: String,
-            category: Category
+            category: Category,
+            decimals: Int? = nil
         ) {
             self.dappName = dappName
             self.symbolOverride = symbolOverride
             self.underlyingCanonicalCoinType = underlyingCanonicalCoinType
             self.category = category
+            self.decimals = decimals
         }
     }
 
@@ -269,6 +277,64 @@ public enum KnownProtocols {
         )
     }()
 
+    /// On-chain decimals for every registry coin type, captured live via
+    /// `suix_getCoinMetadata` on mainnet. Baked in so a position priced via
+    /// its underlying (e.g. every Kai yToken — DeFiLlama prices none of them
+    /// directly) never needs a refresh-time metadata RPC for its decimals.
+    /// Without this, a rate-limited RPC defaulted to 9 and a 6-decimal
+    /// yUSDC amount came out 1000x too small (the reported Kai bug). Keys
+    /// are canonical (64-hex) coin types.
+    static let verifiedDecimals: [String: Int] = [
+        "0x00671b1fa2a124f5be8bdae8b91ee711462c5d9e31bda232e70fd9607b523c88::scallop_af_sui::SCALLOP_AF_SUI": 9,
+        "0x01c389a85310b47e7630a9361d4e71025bc35e4999d3a645949b1b68b26f2273::ywhusdce::YWHUSDCE": 6,
+        "0x02358129a7d66f943786a10b518fdc79145f1fc8d23420d9948c4aeea190f603::fud_sui::FUD_SUI": 9,
+        "0x0425be5f46f5639ab7201dfde3b2ed837fc129c434f55677c9ba11b528a3214a::scallop_haedal::SCALLOP_HAEDAL": 9,
+        "0x08c0fe357d3a138f4552bee393ce3a28a45bebcca43373d6a90bc44ab76f82e2::scallop_sb_wbtc::SCALLOP_SB_WBTC": 8,
+        "0x0a228d1c59071eccf3716076a1f71216846ee256d9fb07ea11fb7c1eb56435a5::scallop_musd::SCALLOP_MUSD": 9,
+        "0x1392650f2eca9e3f6ffae3ff89e42a3590d7102b80e2b430f674730bc30d3259::scallop_wormhole_sol::SCALLOP_WORMHOLE_SOL": 8,
+        "0x1798f84ee72176114ddbf5525a6d964c5f8ea1b3738d08d50d0d3de4cf584884::sbuck::SBUCK": 9,
+        "0x1af58255ce892974e6204b202a6d88fe7c0d00ee27ec9f7078ee827572a229bf::scallop_w_wal::SCALLOP_W_WAL": 9,
+        "0x36bc697c1dba827a4bf7fa3bfc9f1b0953fe09b91c4b4c103efa0b086e03d923::ysuiusdt::YSUIUSDT": 6,
+        "0x3e83d9c798902dbcde72b9ede9fa2997ea43b302f83e4894aa793e6791e95c9f::ylbtc::YLBTC": 8,
+        "0x502867b177303bf1bf226245fcdd3403c177e78d175a55a56c0602c7ff51c7fa::trevin_sui::TREVIN_SUI": 9,
+        "0x549e8b69270defbfafd4f94e17ec44cdbdd99820b33bda2278dea3b9a32d3f55::cert::CERT": 9,
+        "0x5b2fa5c76309a417ccd14a65f036b8d1ff4e76a143ed878a47fdecfe0b09860e::ydeep::YDEEP": 6,
+        "0x5ca17430c1d046fae9edeaa8fd76c7b4193a00d764a0ecfa9418d733ad27bc1e::scallop_sca::SCALLOP_SCA": 9,
+        "0x622345b3f80ea5947567760eec7b9639d0582adcfd6ab9fccb85437aeda7c0d0::scallop_wal::SCALLOP_WAL": 9,
+        "0x6511052d2f1404934e0d877709949bcda7c1d451d1218a4b2643ca2f3fa93991::scallop_ns::SCALLOP_NS": 6,
+        "0x6711551c1e7652a270d9fbf0eee25d99594c157cde3cb5fbb49035eb59b1b001::scallop_fdusd::SCALLOP_FDUSD": 6,
+        "0x67540ceb850d418679e69f1fb6b2093d6df78a2a699ffc733f7646096d552e9b::scallop_wormhole_eth::SCALLOP_WORMHOLE_ETH": 8,
+        "0x790f258062909e3a0ffc78b3c53ac2f62d7084c3bab95644bdeb05add7250001::super_sui::SUPER_SUI": 9,
+        "0x7cb7cdf180891bc67a13f369a2ab8f5a05d018dc6cb1f60d04bcfca842c6fb3f::scallop_ha_wal::SCALLOP_HA_WAL": 9,
+        "0x7ea359636b36e7c027c2cd71adedaf19be658e1477d9e71368a0b3824a0a27ff::yusdc::YUSDC": 6,
+        "0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::spring_sui::SPRING_SUI": 9,
+        "0x854950aa624b1df59fe64e630b2ba7c550642e9342267a33061d59fb31582da5::scallop_usdc::SCALLOP_USDC": 6,
+        "0x8b4d553839b219c3fd47608a0cc3d5fcc572cb25d41b7df3833208586a8d2470::hawal::HAWAL": 9,
+        "0x922d15d7f55c13fd790f6e54397470ec592caa2b508df292a2e8553f3d3b274f::msui::MSUI": 9,
+        "0x9a2376943f7d22f88087c259c5889925f332ca4347e669dc37d54c2bf651af3c::scallop_ha_sui::SCALLOP_HA_SUI": 9,
+        "0xa2859d61462635912553746e1b28a54e90b6ad6270f1e7c7db73761a9d6ba1e1::scallop_xbtc::SCALLOP_XBTC": 8,
+        "0xaafc4f740de0dd0dde642a31148fb94517087052f19afb0f7bed1dc41a50c77b::scallop_sui::SCALLOP_SUI": 9,
+        "0xad4d71551d31092230db1fd482008ea42867dbf27b286e9c70a79d2a6191d58d::scallop_wormhole_usdc::SCALLOP_WORMHOLE_USDC": 6,
+        "0xb14f82d8506d139eacef109688d1b71e7236bcce9b2c0ad526abcd6aa5be7de0::scallop_sb_eth::SCALLOP_SB_ETH": 8,
+        "0xb1b0650a8862e30e3f604fd6c5838bc25464b8d3d827fbd58af7cb9685b832bf::wwal::WWAL": 9,
+        "0xb1d7df34829d1513b73ba17cb7ad90c88d1e104bb65ab8f62f13e0cc103783d3::scallop_sb_usdt::SCALLOP_SB_USDT": 6,
+        "0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI": 9,
+        "0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ywhusdte::YWHUSDTE": 6,
+        "0xbde4ba4c2e274a60ce15c1cfff9e5c42e41654ac8b6d906a57efa4bd3c29f47d::hasui::HASUI": 9,
+        "0xd1b72982e40348d069bb1ff701e634c117bb5f741f44dff91e472d3b01461e55::stsui::STSUI": 9,
+        "0xd285cbbf54c87fd93cd15227547467bb3e405da8bbf2ab99f83f323f88ac9a65::scallop_usdy::SCALLOP_USDY": 6,
+        "0xdab19711df7a4eefc633b9426e15d23305c6815eed775247e477599c706ede98::ywal::YWAL": 9,
+        "0xdd7108db1a209d23d8a25dda78bdca4547b755094305971ed4064dfe5cdfa026::yusdy::YUSDY": 6,
+        "0xe1a1cc6bcf0001a015eab84bcc6713393ce20535f55b8b6f35c142e057a25fbe::scallop_v_sui::SCALLOP_V_SUI": 9,
+        "0xe56d5167f427cbe597da9e8150ef5c337839aaf46891d62468dcf80bdd8e10d1::scallop_fud::SCALLOP_FUD": 5,
+        "0xe68fad47384e18cd79040cb8d72b7f64d267eebb73a0b8d54711aa860570f404::upsui::UPSUI": 9,
+        "0xe6e5a012ec20a49a3d1d57bd2b67140b96cd4d3400b9d79e541f7bdbab661f95::scallop_wormhole_usdt::SCALLOP_WORMHOLE_USDT": 6,
+        "0xea346ce428f91ab007210443efcea5f5cdbbb3aae7e9affc0ca93f9203c31f0c::scallop_cetus::SCALLOP_CETUS": 9,
+        "0xeb7a05a3224837c5e5503575aed0be73c091d1ce5e43aa3c3e716e0ae614608f::scallop_deep::SCALLOP_DEEP": 6,
+        "0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI": 9,
+        "0xfc39a879b5a8772f682f1202cc5a8a3d93654cbb9e716b96bda7e5832af0e0eb::yxbtc::YXBTC": 8,
+    ]
+
     /// Lending protocols whose receipt coins wrap an underlying asset inside a
     /// generic type parameter (e.g. `<pkg>::reserve::MarketCoin<USDC>`). For each
     /// we parse the underlying out and price the position via that asset. Covers
@@ -305,12 +371,27 @@ public enum KnownProtocols {
     public static func enrichment(forCoinType raw: String) -> EnrichedHolding? {
         let canonical = CoinTypeCanonicalizer.canonicalize(raw)
         if let direct = directRegistry[canonical] {
-            return direct
+            return withVerifiedDecimals(direct, canonical: canonical)
         }
         if let wrapped = lendingEnrichment(canonical: canonical) {
-            return wrapped
+            // Legacy Scallop MarketCoin<U> has the same decimals as its
+            // underlying U; carry that through so the amount is correct.
+            return withVerifiedDecimals(wrapped, canonical: wrapped.underlyingCanonicalCoinType)
         }
         return nil
+    }
+
+    /// Returns `holding` with its `decimals` filled from the live-verified map
+    /// when known (keyed by `canonical`), so callers never need a metadata RPC.
+    private static func withVerifiedDecimals(_ holding: EnrichedHolding, canonical: String) -> EnrichedHolding {
+        guard holding.decimals == nil, let dec = verifiedDecimals[canonical] else { return holding }
+        return EnrichedHolding(
+            dappName: holding.dappName,
+            symbolOverride: holding.symbolOverride,
+            underlyingCanonicalCoinType: holding.underlyingCanonicalCoinType,
+            category: holding.category,
+            decimals: dec
+        )
     }
 
     private static func lendingEnrichment(canonical: String) -> EnrichedHolding? {

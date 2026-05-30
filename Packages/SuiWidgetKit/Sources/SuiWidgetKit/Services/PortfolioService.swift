@@ -94,12 +94,19 @@ public struct PortfolioService {
                 ?? enrichment.flatMap { resolved[$0.underlyingCanonicalCoinType] }
 
             if let priceForValue {
-                // `await` can't sit to the right of `??`, so resolve decimals in
-                // two steps: trust the price source's reported decimals, else
-                // fall back to the cached/on-chain metadata lookup.
+                // Decimals priority (no `await` right of `??`, so do it stepwise):
+                //   1. the price source's reported decimals (DeFiLlama gives these);
+                //   2. the registry's live-verified decimals — robust when no source
+                //      prices the receipt directly (every Kai yToken), so we never
+                //      hit a metadata RPC for a registry coin;
+                //   3. a `getCoinMetadata` lookup as a last resort.
+                // Without step 2, a rate-limited RPC defaulted to 9 and a 6-decimal
+                // yToken's amount (and its USD value) came out 1000x too small.
                 let decimals: Int
                 if let sourceDecimals = ownPrice?.decimals {
                     decimals = sourceDecimals
+                } else if let knownDecimals = enrichment?.decimals {
+                    decimals = knownDecimals
                 } else {
                     decimals = await ensureDecimals(canonical: canonicalCoinType, rawCoinType: balance.coinType)
                 }
@@ -131,14 +138,14 @@ public struct PortfolioService {
                 let symbol: String
                 let displayName: String
                 if let enrichment {
-                    symbol = enrichment.symbolOverride
-                        ?? ownPrice?.symbol?.uppercased()
+                    symbol = nonEmpty(enrichment.symbolOverride)
+                        ?? nonEmpty(ownPrice?.symbol)?.uppercased()
                         ?? shortSymbol(from: balance.coinType)
-                    let underlyingName = priceForValue.name ?? priceForValue.symbol ?? "position"
+                    let underlyingName = nonEmpty(priceForValue.name) ?? nonEmpty(priceForValue.symbol) ?? "position"
                     displayName = "\(enrichment.dappName) · \(underlyingName)"
                 } else {
-                    symbol = ownPrice?.symbol?.uppercased() ?? shortSymbol(from: balance.coinType)
-                    displayName = ownPrice?.name ?? ownPrice?.symbol ?? symbol
+                    symbol = nonEmpty(ownPrice?.symbol)?.uppercased() ?? shortSymbol(from: balance.coinType)
+                    displayName = nonEmpty(ownPrice?.name) ?? nonEmpty(ownPrice?.symbol) ?? symbol
                 }
 
                 holdings.append(CachedTokenHolding(
@@ -160,14 +167,15 @@ public struct PortfolioService {
                 // symbol / name / decimals via on-chain Move metadata; fall back
                 // to a coin-type short-symbol when the RPC fails.
                 let metadata = try? await sui.getCoinMetadata(coinType: balance.coinType)
-                let decimals = metadata?.decimals ?? 9
+                // Registry decimals first (verified, no RPC), then metadata, then 9.
+                let decimals = enrichment?.decimals ?? metadata?.decimals ?? 9
                 let amount = balance.totalBalance / pow(Decimal(10), decimals)
 
-                let symbol = enrichment?.symbolOverride
-                    ?? metadata?.symbol
+                let symbol = nonEmpty(enrichment?.symbolOverride)
+                    ?? nonEmpty(metadata?.symbol)
                     ?? shortSymbol(from: balance.coinType)
                 let name = enrichment.map { "\($0.dappName) wrapped position" }
-                    ?? metadata?.name
+                    ?? nonEmpty(metadata?.name)
                     ?? balance.coinType
 
                 holdings.append(CachedTokenHolding(
@@ -296,11 +304,33 @@ public struct PortfolioService {
         return row?.decimals ?? 9
     }
 
+    /// Trims a string and returns nil if empty, so `??` chains skip blank
+    /// symbols/names. Some Sui coins report an empty `symbol` in their metadata;
+    /// without this the empty string (being non-nil) would win the `??` and
+    /// render a blank token row.
+    private func nonEmpty(_ s: String?) -> String? {
+        guard let t = s?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return nil }
+        return t
+    }
+
+    /// Best-effort symbol derived purely from the coin type, used only when no
+    /// price source and no metadata yielded one. `0x2::sui::SUI` → "SUI". For
+    /// Wormhole-style `0x…::coin::COIN` types — where the struct ("COIN") and
+    /// module ("coin") are both generic and every bridged asset would collapse
+    /// to the same "COIN" — fall back to a short address tag so distinct tokens
+    /// stay distinguishable instead of all showing "COIN".
     private func shortSymbol(from coinType: String) -> String {
-        // "0x2::sui::SUI" → "SUI". Fallback used only when getCoinMetadata fails
-        // for an untracked coin.
-        let parts = coinType.split(separator: ":")
-        return parts.last.map(String.init)?.uppercased() ?? "?"
+        let segments = coinType.split(separator: ":").map(String.init).filter { !$0.isEmpty }
+        guard let structName = segments.last else { return "?" }
+        let module = segments.count >= 2 ? segments[segments.count - 2] : ""
+        let generic: Set<String> = ["coin", "COIN"]
+        if generic.contains(structName), generic.contains(module) {
+            // e.g. 0xaf8cd5…::coin::COIN → "0xaf8c…COIN"
+            let addr = segments.first ?? ""
+            let head = addr.hasPrefix("0x") ? String(addr.dropFirst(2).prefix(4)) : String(addr.prefix(4))
+            return "0x\(head)…COIN"
+        }
+        return structName.uppercased()
     }
 
     /// Resolves USD prices for the given canonical coin types, keyed by canonical

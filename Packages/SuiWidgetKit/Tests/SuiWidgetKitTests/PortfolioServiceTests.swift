@@ -284,5 +284,101 @@ extension MockURLProtocolSuite {
             #expect(position.priceUSD == Decimal(string: "2.0"))
             #expect(position.valueUSD == Decimal(string: "20.0"))
         }
+
+        /// Regression for the reported "wrong Kai amount" bug. yUSDC is 6-decimal;
+        /// DeFiLlama prices only the underlying USDC (never the yToken), AND
+        /// getCoinMetadata is unavailable (null result, simulating refresh-time RPC
+        /// rate-limiting). The amount must come from the registry's verified 6
+        /// decimals, not the default 9. Pre-fix: 1_000_000 / 10^9 = 0.001 (1000x
+        /// too small). Post-fix: / 10^6 = 1.0.
+        @Test func kai_ytoken_amount_uses_registry_decimals_when_metadata_unavailable() async throws {
+            MockURLProtocol.reset()
+            let yUSDC = "0x7ea359636b36e7c027c2cd71adedaf19be658e1477d9e71368a0b3824a0a27ff::yusdc::YUSDC"
+            let usdc = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            let usdcCanonical = CoinTypeCanonicalizer.canonicalize(usdc)
+            let balancesJSON = """
+            {"jsonrpc":"2.0","id":1,"result":[
+              {"coinType":"\(yUSDC)","coinObjectCount":1,"totalBalance":"1000000"}
+            ]}
+            """
+            // DeFiLlama prices ONLY the underlying USDC at $1 — yUSDC is absent.
+            let llamaPrices = """
+            {"coins":{"sui:\(usdcCanonical)":{"decimals":6,"symbol":"USDC","price":1.0,"timestamp":1,"confidence":0.99}}}
+            """
+
+            MockURLProtocol.handler = { request in
+                let host = request.url?.host ?? ""
+                if host.contains("llama.fi") {
+                    let path = request.url?.path ?? ""
+                    if path.contains("/percentage/") { return (200, Data(#"{"coins":{}}"#.utf8), [:], nil) }
+                    return (200, Data(llamaPrices.utf8), [:], nil)
+                }
+                if host.contains("coingecko.com") { return (200, Data(#"[]"#.utf8), [:], nil) }
+                let body = Self.decodeBody(request)
+                if body.contains("suix_getAllBalances") {
+                    return (200, Data(balancesJSON.utf8), [:], nil)
+                }
+                // CRITICAL: getCoinMetadata is rate-limited → null result. The fix
+                // must NOT depend on it for a registry coin's decimals.
+                return (200, Data(#"{"jsonrpc":"2.0","id":1,"result":null}"#.utf8), [:], nil)
+            }
+
+            let context = try makeContext()
+            let walletId = try seedWallet(context)
+            let service = PortfolioService(
+                modelContext: context,
+                sui: makeRPC(),
+                coinGecko: makeCoinGecko(context),
+                deFiLlama: makeDeFiLlama()
+            )
+
+            let portfolio = try await service.refresh(walletId: walletId)
+            let position = try #require(portfolio.tokens.first(where: { $0.dappName == "Kai" }))
+            #expect(position.symbol == "yUSDC")
+            #expect(position.decimals == 6)               // registry-verified, not default 9
+            #expect(position.balance == Decimal(1))       // not 0.001
+            #expect(position.valueUSD == Decimal(1))      // 1.0 × $1 underlying
+            #expect(portfolio.totalUSD == Decimal(1))
+        }
+
+        /// Regression for "not all token symbols showing". Two distinct
+        /// Wormhole-bridged assets both use the generic type `…::coin::COIN`. When
+        /// unpriced AND metadata is unavailable, the type-only fallback used to
+        /// collapse both to "COIN" (a collision). They must now stay distinct.
+        @Test func bridged_coin_coin_symbols_do_not_collide() async throws {
+            MockURLProtocol.reset()
+            let ethCoin = "0xaf8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN"
+            let usdtCoin = "0xc060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN"
+            let balancesJSON = """
+            {"jsonrpc":"2.0","id":1,"result":[
+              {"coinType":"\(ethCoin)","coinObjectCount":1,"totalBalance":"1000000000"},
+              {"coinType":"\(usdtCoin)","coinObjectCount":1,"totalBalance":"1000000"}
+            ]}
+            """
+            MockURLProtocol.handler = { request in
+                let host = request.url?.host ?? ""
+                if host.contains("llama.fi") { return (200, Data(#"{"coins":{}}"#.utf8), [:], nil) }
+                if host.contains("coingecko.com") { return (200, Data(#"[]"#.utf8), [:], nil) }
+                let body = Self.decodeBody(request)
+                if body.contains("suix_getAllBalances") { return (200, Data(balancesJSON.utf8), [:], nil) }
+                // Metadata unavailable (rate-limited) → forces the type-only fallback.
+                return (200, Data(#"{"jsonrpc":"2.0","id":1,"result":null}"#.utf8), [:], nil)
+            }
+
+            let context = try makeContext()
+            let walletId = try seedWallet(context)
+            let service = PortfolioService(
+                modelContext: context,
+                sui: makeRPC(),
+                coinGecko: makeCoinGecko(context),
+                deFiLlama: makeDeFiLlama()
+            )
+
+            let portfolio = try await service.refresh(walletId: walletId)
+            let symbols = Set(portfolio.tokens.map(\.symbol))
+            #expect(portfolio.tokens.count == 2)
+            #expect(symbols.count == 2, "two distinct ::coin::COIN assets must not share one symbol; got \(symbols)")
+            #expect(!symbols.contains("COIN"), "bare 'COIN' is a collision placeholder; got \(symbols)")
+        }
     }
 }

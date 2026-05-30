@@ -134,4 +134,46 @@ struct KnownProtocolsTests {
                     "receipt must not be its own underlying: \(c.ct)")
         }
     }
+
+    /// Regression for the wrong-Kai-amount bug: enrichment must carry the
+    /// receipt's OWN live-verified decimals, so PortfolioService never falls back
+    /// to the metadata RPC (which defaults to 9 under rate-limiting). A 6-decimal
+    /// yToken shown at 9 decimals reads 1000x too small.
+    @Test func registry_entries_carry_verified_decimals() {
+        // 6-decimal Kai yTokens (the ones that broke at the default 9).
+        for ct in [
+            "0x7ea359636b36e7c027c2cd71adedaf19be658e1477d9e71368a0b3824a0a27ff::yusdc::YUSDC",
+            "0x36bc697c1dba827a4bf7fa3bfc9f1b0953fe09b91c4b4c103efa0b086e03d923::ysuiusdt::YSUIUSDT",
+            "0xdd7108db1a209d23d8a25dda78bdca4547b755094305971ed4064dfe5cdfa026::yusdy::YUSDY",
+            "0x5b2fa5c76309a417ccd14a65f036b8d1ff4e76a143ed878a47fdecfe0b09860e::ydeep::YDEEP",
+        ] {
+            #expect(KnownProtocols.enrichment(forCoinType: ct)?.decimals == 6, "expected 6 decimals for \(ct)")
+        }
+        // 8-decimal BTC yTokens.
+        for ct in [
+            "0xfc39a879b5a8772f682f1202cc5a8a3d93654cbb9e716b96bda7e5832af0e0eb::yxbtc::YXBTC",
+            "0x3e83d9c798902dbcde72b9ede9fa2997ea43b302f83e4894aa793e6791e95c9f::ylbtc::YLBTC",
+        ] {
+            #expect(KnownProtocols.enrichment(forCoinType: ct)?.decimals == 8, "expected 8 decimals for \(ct)")
+        }
+        // 9-decimal SUI-vault receipt / SUI-LST.
+        #expect(KnownProtocols.enrichment(forCoinType: "0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI")?.decimals == 9)
+        #expect(KnownProtocols.enrichment(forCoinType: "0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI")?.decimals == 9)
+        // Scallop standalone sUSDC is 6-decimal.
+        #expect(KnownProtocols.enrichment(forCoinType: "0x854950aa624b1df59fe64e630b2ba7c550642e9342267a33061d59fb31582da5::scallop_usdc::SCALLOP_USDC")?.decimals == 6)
+    }
+
+    /// Sampled direct-registry entries must all carry decimals (the bake-in must
+    /// be complete — a nil means a coin would silently fall back to the RPC).
+    @Test func sampled_registry_entries_have_decimals() {
+        let samples = [
+            "0xf325ce1300e8dac124071d3152c5c5ee6174914f8bc2161e88329cf579246efc::afsui::AFSUI",
+            "0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI",
+            "0x1798f84ee72176114ddbf5525a6d964c5f8ea1b3738d08d50d0d3de4cf584884::sbuck::SBUCK",
+            "0xaafc4f740de0dd0dde642a31148fb94517087052f19afb0f7bed1dc41a50c77b::scallop_sui::SCALLOP_SUI",
+        ]
+        for ct in samples {
+            #expect(KnownProtocols.enrichment(forCoinType: ct)?.decimals != nil, "missing decimals for \(ct)")
+        }
+    }
 }
