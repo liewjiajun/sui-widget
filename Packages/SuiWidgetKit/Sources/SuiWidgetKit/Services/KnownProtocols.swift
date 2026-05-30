@@ -108,9 +108,63 @@ public enum KnownProtocols {
                     category: .liquidStaking
                 )
             ),
+            // haWAL — Haedal liquid-staked WAL (Walrus).
+            (
+                "0x8b4d553839b219c3fd47608a0cc3d5fcc572cb25d41b7df3833208586a8d2470::hawal::HAWAL",
+                EnrichedHolding(
+                    dappName: "Haedal",
+                    symbolOverride: "haWAL",
+                    underlyingCanonicalCoinType: CoinTypeCanonicalizer.canonicalize(walCoinType),
+                    category: .liquidStaking
+                )
+            ),
         ]
-        return Dictionary(uniqueKeysWithValues: entries.map { (CoinTypeCanonicalizer.canonicalize($0.0), $0.1) })
+        // Kai Finance Single-Asset-Vault (SAV) yTokens — yield-bearing lending
+        // receipts that show up as ordinary coins in `getAllBalances`. Coin types
+        // verified live via `suix_getCoinMetadata` on mainnet; each is priced via
+        // its underlying asset (a slight under-estimate vs. the accrued exchange
+        // rate, but correct to first order and far better than "untracked"). Only
+        // yTokens whose underlying coin type is unambiguous are listed; yWBTC /
+        // yWHUSDCe were intentionally omitted pending a verified underlying so we
+        // never misprice. Leveraged Kai positions are Shared objects (not coins)
+        // and are out of scope.
+        let kaiEntries: [(String, EnrichedHolding)] = [
+            kaiVault("0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI", "ySUI", suiCanonical),
+            kaiVault("0x7ea359636b36e7c027c2cd71adedaf19be658e1477d9e71368a0b3824a0a27ff::yusdc::YUSDC", "yUSDC", usdcCoinType),
+            kaiVault("0x5b2fa5c76309a417ccd14a65f036b8d1ff4e76a143ed878a47fdecfe0b09860e::ydeep::YDEEP", "yDEEP", deepCoinType),
+            kaiVault("0xdab19711df7a4eefc633b9426e15d23305c6815eed775247e477599c706ede98::ywal::YWAL", "yWAL", walCoinType),
+            kaiVault("0xdd7108db1a209d23d8a25dda78bdca4547b755094305971ed4064dfe5cdfa026::yusdy::YUSDY", "yUSDY", usdyCoinType),
+            kaiVault("0x36bc697c1dba827a4bf7fa3bfc9f1b0953fe09b91c4b4c103efa0b086e03d923::ysuiusdt::YSUIUSDT", "ysuiUSDT", suiUSDTCoinType),
+            kaiVault("0xfc39a879b5a8772f682f1202cc5a8a3d93654cbb9e716b96bda7e5832af0e0eb::yxbtc::YXBTC", "yXBTC", xbtcCoinType),
+            kaiVault("0x3e83d9c798902dbcde72b9ede9fa2997ea43b302f83e4894aa793e6791e95c9f::ylbtc::YLBTC", "yLBTC", lbtcCoinType),
+        ]
+        let all = entries + kaiEntries
+        return Dictionary(uniqueKeysWithValues: all.map { (CoinTypeCanonicalizer.canonicalize($0.0), $0.1) })
     }()
+
+    // Underlying coin types (mainnet) used by the registry above.
+    private static let usdcCoinType = "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+    private static let deepCoinType = "0xdeeb7a4662eec9f2f3def03fb937a663dddaa2e215b8078a284d026b7946c270::deep::DEEP"
+    private static let walCoinType = "0x356a26eb9e012a68958082340d4c4116e7f55615cf27affcff209cf0ae544f59::wal::WAL"
+    private static let usdyCoinType = "0x960b531667636f39e85867775f52f6b1f220a058c4de786905bdf761e06a56bb::usdy::USDY"
+    private static let suiUSDTCoinType = "0x375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT"
+    private static let xbtcCoinType = "0x876a4b7bce8aeaef60464c11f4026903e9afacab79b9b142686158aa86560b50::xbtc::XBTC"
+    private static let lbtcCoinType = "0x3e8e9423d80e1774a7ca128fccd8bf5f1f7753be658c5e645929037f7c819040::lbtc::LBTC"
+
+    /// Builds a Kai SAV yToken registry entry (lending category, priced via
+    /// `underlying`). `underlying` is canonicalised here so the
+    /// `PortfolioService` price lookup matches.
+    private static func kaiVault(_ coinType: String, _ symbol: String, _ underlying: String) -> (String, EnrichedHolding) {
+        (
+            coinType,
+            EnrichedHolding(
+                dappName: "Kai",
+                symbolOverride: symbol,
+                underlyingCanonicalCoinType: CoinTypeCanonicalizer.canonicalize(underlying),
+                category: .lending
+            )
+        )
+    }
 
     /// Lending protocols whose receipt coins wrap an underlying asset inside a
     /// generic type parameter (e.g. `<pkg>::reserve::MarketCoin<USDC>`). For each

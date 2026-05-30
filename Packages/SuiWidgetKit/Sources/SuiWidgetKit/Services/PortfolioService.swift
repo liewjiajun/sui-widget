@@ -8,15 +8,32 @@ public struct PortfolioService {
     public let modelContext: ModelContext
     public let sui: SuiRPCClient
     public let coinGecko: CoinGeckoClient
+    /// Primary price source — keyed directly by Sui coin type, no API key, far
+    /// higher rate limits than CoinGecko's free tier. CoinGecko stays as a
+    /// fallback for coins DeFiLlama doesn't track.
+    public let deFiLlama: DeFiLlamaClient
 
     public init(
         modelContext: ModelContext,
         sui: SuiRPCClient = SuiRPCClient(),
-        coinGecko: CoinGeckoClient
+        coinGecko: CoinGeckoClient,
+        deFiLlama: DeFiLlamaClient = DeFiLlamaClient()
     ) {
         self.modelContext = modelContext
         self.sui = sui
         self.coinGecko = coinGecko
+        self.deFiLlama = deFiLlama
+    }
+
+    /// A price resolved for one canonical coin type, regardless of source.
+    private struct ResolvedPrice {
+        var priceUSD: Decimal
+        var change24h: Double?
+        var symbol: String?
+        var name: String?
+        var iconURL: String?
+        /// The coin's own on-chain decimals when the source reported them.
+        var decimals: Int?
     }
 
     /// Tokens + prices, with staked SUI folded into the portfolio total.
@@ -43,52 +60,23 @@ public struct PortfolioService {
         }
         let stakedSUI = stakedBaseUnits / Decimal(1_000_000_000)
 
-        // 2. Coin-type → CoinGecko-id mapping (24h TTL cache). Both sides are
-        //    canonicalized so short-form RPC coin types (e.g. `0x2::sui::SUI`)
-        //    match long-form CoinGecko entries.
-        let mappings = try await coinGecko.refreshCoinList(force: false)
-        let canonicalLookup: [String: CoinTypeMapping] = Dictionary(
-            uniqueKeysWithValues: mappings.map { (CoinTypeCanonicalizer.canonicalize($0.coinType), $0) }
-        )
-
-        // 3. Tracked CoinGecko ids. Always include SUI when the user has any
-        //    stakes — otherwise a wallet with all SUI delegated (zero in-wallet)
-        //    would have no SUI price fetched and staked value couldn't be
-        //    valued in USD. Wrapped DeFi positions (LST receipts, Scallop
-        //    sCoins) are priced via their underlying asset's CoinGecko id, so
-        //    we also queue the underlying for any balance that matches the
-        //    KnownProtocols registry.
-        var trackedIds: [String] = []
+        // 2. Resolve a USD price for every coin type we care about — every held
+        //    balance, plus the underlying asset of any recognised DeFi wrapper
+        //    (LST / lending / Kai yToken receipts are valued via their
+        //    underlying), plus SUI when the user has stakes. DeFiLlama is the
+        //    primary source (keyed by coin type, no key, generous limits) with
+        //    CoinGecko as fallback — this is what fixes the CoinGecko 429s.
+        let suiCanonical = CoinTypeCanonicalizer.canonicalize("0x2::sui::SUI")
+        var typesToPrice: Set<String> = Set(balances.map { CoinTypeCanonicalizer.canonicalize($0.coinType) })
         for balance in balances {
-            let canonical = CoinTypeCanonicalizer.canonicalize(balance.coinType)
-            if let mapping = canonicalLookup[canonical] {
-                trackedIds.append(mapping.coingeckoId)
-            } else if let enriched = KnownProtocols.enrichment(forCoinType: balance.coinType),
-                      let underlyingMapping = canonicalLookup[enriched.underlyingCanonicalCoinType] {
-                trackedIds.append(underlyingMapping.coingeckoId)
+            if let enriched = KnownProtocols.enrichment(forCoinType: balance.coinType) {
+                typesToPrice.insert(enriched.underlyingCanonicalCoinType)
             }
         }
-        let suiCanonical = CoinTypeCanonicalizer.canonicalize("0x2::sui::SUI")
-        let suiMapping = canonicalLookup[suiCanonical]
-        if stakedSUI > 0, let suiMapping, !trackedIds.contains(suiMapping.coingeckoId) {
-            trackedIds.append(suiMapping.coingeckoId)
-        }
+        if stakedSUI > 0 { typesToPrice.insert(suiCanonical) }
+        let resolved = await resolvePrices(canonicalTypes: Array(typesToPrice))
 
-        // 4. Batch prices. Dedupe ids — multiple holdings can map to the same
-        //    CoinGecko id (e.g. SUI plus an LST priced via SUI), and duplicate
-        //    ids waste the query budget and can confuse the response mapping.
-        let uniqueTrackedIds = Array(Set(trackedIds))
-        let prices: [CoinGeckoMarket]
-        if uniqueTrackedIds.isEmpty {
-            prices = []
-        } else {
-            prices = try await coinGecko.fetchPrices(coingeckoIds: uniqueTrackedIds)
-        }
-        let priceById: [String: CoinGeckoMarket] = Dictionary(
-            uniqueKeysWithValues: prices.map { ($0.id, $0) }
-        )
-
-        // 5. Build CachedTokenHolding rows + totals.
+        // 3. Build CachedTokenHolding rows + totals.
         var portfolioToday: Decimal = 0
         var portfolioYesterday: Decimal = 0
         var holdings: [CachedTokenHolding] = []
@@ -97,63 +85,60 @@ public struct PortfolioService {
             let canonicalCoinType = CoinTypeCanonicalizer.canonicalize(balance.coinType)
             let enrichment = KnownProtocols.enrichment(forCoinType: balance.coinType)
 
-            // Pricing path: direct CoinGecko mapping wins; otherwise fall back
-            // to the wrapped position's underlying asset. Either way we get a
-            // mapping or nil; nil routes to the untracked path below.
-            let directMapping = canonicalLookup[canonicalCoinType]
-            let mapping = directMapping
-                ?? enrichment.flatMap { canonicalLookup[$0.underlyingCanonicalCoinType] }
+            // Price the wrapper directly when possible; otherwise via its
+            // underlying asset (LST / lending / Kai yToken). Decimals always come
+            // from the wrapper's OWN source — never the underlying's — so the
+            // base-unit conversion stays correct even when prices are borrowed.
+            let ownPrice = resolved[canonicalCoinType]
+            let priceForValue = ownPrice
+                ?? enrichment.flatMap { resolved[$0.underlyingCanonicalCoinType] }
 
-            if let mapping {
-                let decimals = await ensureDecimals(
-                    canonical: canonicalCoinType,
-                    rawCoinType: balance.coinType
-                )
-                // Pure-Decimal base-unit conversion. Routing through Double would
-                // truncate a u64 balance (up to 20 digits) to ~15-16 significant
-                // digits and reintroduce float noise via Decimal(Double); dividing
-                // by a Decimal power-of-ten is exact in base-10.
+            if let priceForValue {
+                // `await` can't sit to the right of `??`, so resolve decimals in
+                // two steps: trust the price source's reported decimals, else
+                // fall back to the cached/on-chain metadata lookup.
+                let decimals: Int
+                if let sourceDecimals = ownPrice?.decimals {
+                    decimals = sourceDecimals
+                } else {
+                    decimals = await ensureDecimals(canonical: canonicalCoinType, rawCoinType: balance.coinType)
+                }
+                // Pure-Decimal base-unit conversion (exact in base-10; no float drift).
                 let amount = balance.totalBalance / pow(Decimal(10), decimals)
 
-                let market = priceById[mapping.coingeckoId]
-                // currentPrice is now optional (CoinGecko sends null for unpriced
-                // coins); flatten the double-optional so nil routes through the
-                // existing "tracked but unpriced" path (contributes 0 to totals).
-                let priceUSD = market?.currentPrice ?? nil
-                let change24h = market?.priceChangePercentage24h
+                let priceUSD = priceForValue.priceUSD
+                let change24h = priceForValue.change24h
 
-                if let priceUSD {
-                    portfolioToday += amount * priceUSD
-                    if let change24h {
-                        let factor = Decimal(1 + change24h / 100)
-                        // Guard on sign, not just zero: a thin/erroneous feed can
-                        // report change < -100%, making factor negative — dividing
-                        // by it would flip the sign and corrupt the snapshot delta.
-                        // Treat any change ≤ -100% as degenerate → use today's price.
-                        if factor > 0 {
-                            let yesterdayPrice = priceUSD / factor
-                            portfolioYesterday += amount * yesterdayPrice
-                        } else {
-                            portfolioYesterday += amount * priceUSD
-                        }
+                portfolioToday += amount * priceUSD
+                if let change24h {
+                    let factor = Decimal(1 + change24h / 100)
+                    // Guard on sign, not just zero: a thin/erroneous feed can
+                    // report change < -100%, making factor negative — dividing by
+                    // it would flip the sign and corrupt the snapshot delta. Treat
+                    // any change ≤ -100% as degenerate → use today's price.
+                    if factor > 0 {
+                        portfolioYesterday += amount * (priceUSD / factor)
                     } else {
                         portfolioYesterday += amount * priceUSD
                     }
+                } else {
+                    portfolioYesterday += amount * priceUSD
                 }
 
-                // Symbol/name preference: KnownProtocols override (e.g.,
-                // "afSUI", "sUSDC") wins so the row reads as the wrapped
-                // position rather than the underlying. Falls back to the
-                // direct CoinGecko mapping's name/symbol when the wrapper
-                // itself is listed by CoinGecko.
+                // Symbol/name preference: KnownProtocols override (e.g. "afSUI",
+                // "ySUI", "sUSDC") wins so the row reads as the wrapped position;
+                // else the price source's own symbol; else on-chain fallback.
                 let symbol: String
                 let displayName: String
                 if let enrichment {
-                    symbol = enrichment.symbolOverride ?? mapping.symbol.uppercased()
-                    displayName = "\(enrichment.dappName) · \(mapping.name)"
+                    symbol = enrichment.symbolOverride
+                        ?? ownPrice?.symbol?.uppercased()
+                        ?? shortSymbol(from: balance.coinType)
+                    let underlyingName = priceForValue.name ?? priceForValue.symbol ?? "position"
+                    displayName = "\(enrichment.dappName) · \(underlyingName)"
                 } else {
-                    symbol = mapping.symbol.uppercased()
-                    displayName = mapping.name
+                    symbol = ownPrice?.symbol?.uppercased() ?? shortSymbol(from: balance.coinType)
+                    displayName = ownPrice?.name ?? ownPrice?.symbol ?? symbol
                 }
 
                 holdings.append(CachedTokenHolding(
@@ -164,19 +149,18 @@ public struct PortfolioService {
                     decimals: decimals,
                     priceUSD: priceUSD,
                     priceChange24h: change24h,
-                    iconURL: market?.image,
+                    iconURL: ownPrice?.iconURL,
                     isTracked: true,
                     dappName: enrichment?.dappName,
                     underlyingCoinType: enrichment?.underlyingCanonicalCoinType,
                     defiCategory: enrichment?.category.rawValue
                 ))
             } else {
-                // Untracked token. Try to surface real symbol/name/decimals
-                // via on-chain Move metadata; fall back to a coin-type
-                // short-symbol when the RPC fails.
+                // Untracked token — neither source priced it. Surface real
+                // symbol / name / decimals via on-chain Move metadata; fall back
+                // to a coin-type short-symbol when the RPC fails.
                 let metadata = try? await sui.getCoinMetadata(coinType: balance.coinType)
                 let decimals = metadata?.decimals ?? 9
-                // Pure-Decimal conversion (see tracked path above).
                 let amount = balance.totalBalance / pow(Decimal(10), decimals)
 
                 let symbol = enrichment?.symbolOverride
@@ -203,26 +187,24 @@ public struct PortfolioService {
             }
         }
 
-        // 5b. Fold staked SUI value into the portfolio total. Donut slices
+        // 3b. Fold staked SUI value into the portfolio total. Donut slices
         //     still reflect only spendable holdings — the StakedBadge below
         //     the donut surfaces the staked amount as a separate line so the
         //     allocation breakdown remains coherent.
-        if stakedSUI > 0, let suiMapping {
-            let suiMarket = priceById[suiMapping.coingeckoId]
-            if let suiPrice = suiMarket?.currentPrice ?? nil {
-                let stakedTodayUSD = stakedSUI * suiPrice
-                portfolioToday += stakedTodayUSD
-                if let change24h = suiMarket?.priceChangePercentage24h {
-                    let factor = Decimal(1 + change24h / 100)
-                    // Sign guard — see the tracked-token block above.
-                    if factor > 0 {
-                        portfolioYesterday += stakedSUI * (suiPrice / factor)
-                    } else {
-                        portfolioYesterday += stakedTodayUSD
-                    }
+        if stakedSUI > 0, let sui = resolved[suiCanonical] {
+            let suiPrice = sui.priceUSD
+            let stakedTodayUSD = stakedSUI * suiPrice
+            portfolioToday += stakedTodayUSD
+            if let change24h = sui.change24h {
+                let factor = Decimal(1 + change24h / 100)
+                // Sign guard — see the tracked-token block above.
+                if factor > 0 {
+                    portfolioYesterday += stakedSUI * (suiPrice / factor)
                 } else {
                     portfolioYesterday += stakedTodayUSD
                 }
+            } else {
+                portfolioYesterday += stakedTodayUSD
             }
         }
 
@@ -319,5 +301,66 @@ public struct PortfolioService {
         // for an untracked coin.
         let parts = coinType.split(separator: ":")
         return parts.last.map(String.init)?.uppercased() ?? "?"
+    }
+
+    /// Resolves USD prices for the given canonical coin types, keyed by canonical
+    /// coin type. **DeFiLlama is primary** (keyed by coin type, no API key, ~500
+    /// req/min, covers Sui long-tail) — this is what fixes the CoinGecko 429
+    /// rate-limit problem. **CoinGecko is the fallback** only for coin types
+    /// DeFiLlama didn't return. Never throws — a price-source outage degrades to
+    /// "untracked" rows rather than failing the whole snapshot.
+    private func resolvePrices(canonicalTypes: [String]) async -> [String: ResolvedPrice] {
+        var result: [String: ResolvedPrice] = [:]
+        guard !canonicalTypes.isEmpty else { return result }
+
+        // 1. DeFiLlama primary (best-effort; keyed directly by Sui coin type).
+        if let llama = try? await deFiLlama.fetchPrices(coinTypes: canonicalTypes) {
+            for (coinType, price) in llama {
+                result[coinType] = ResolvedPrice(
+                    priceUSD: price.priceUSD,
+                    change24h: price.change24h,
+                    symbol: price.symbol,
+                    name: price.symbol,   // DeFiLlama only exposes symbol
+                    iconURL: nil,
+                    decimals: price.decimals
+                )
+            }
+        }
+
+        // 2. CoinGecko fallback for whatever DeFiLlama missed.
+        let missing = canonicalTypes.filter { result[$0] == nil }
+        guard !missing.isEmpty,
+              let mappings = try? await coinGecko.refreshCoinList(force: false)
+        else { return result }
+
+        let mappingByCanonical: [String: CoinTypeMapping] = Dictionary(
+            mappings.map { (CoinTypeCanonicalizer.canonicalize($0.coinType), $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        var coingeckoIdForCanonical: [String: String] = [:]
+        for coinType in missing {
+            if let mapping = mappingByCanonical[coinType] {
+                coingeckoIdForCanonical[coinType] = mapping.coingeckoId
+            }
+        }
+        let ids = Array(Set(coingeckoIdForCanonical.values))
+        guard !ids.isEmpty,
+              let markets = try? await coinGecko.fetchPrices(coingeckoIds: ids)
+        else { return result }
+
+        let marketById = Dictionary(markets.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        for (coinType, id) in coingeckoIdForCanonical {
+            guard let market = marketById[id], let price = market.currentPrice else { continue }
+            let mapping = mappingByCanonical[coinType]
+            result[coinType] = ResolvedPrice(
+                priceUSD: price,
+                change24h: market.priceChangePercentage24h,
+                symbol: mapping?.symbol ?? market.symbol,
+                name: mapping?.name,
+                iconURL: market.image,
+                decimals: nil
+            )
+        }
+        return result
     }
 }

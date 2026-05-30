@@ -85,7 +85,14 @@ public struct NFTService {
                 ?? displayData["image"]
                 ?? displayData["img_url"]
                 ?? ""
-            let collection = obj.type
+            // Human-readable collection name: prefer the Display `collection`
+            // field; otherwise humanise the on-chain struct type. Previously we
+            // stored the raw `0x<package>::module::Struct` type, so the gallery
+            // grouped NFTs under unreadable package IDs.
+            let collection = CollectionNamer.collectionName(
+                displayCollection: displayData["collection"] ?? displayData["collection_name"],
+                type: obj.type
+            )
 
             if let row = existingByObjectId[obj.objectId] {
                 row.name = name
@@ -105,6 +112,7 @@ public struct NFTService {
                         $0.key != "name" && $0.key != "title"
                             && $0.key != "image_url" && $0.key != "imageUrl"
                             && $0.key != "image" && $0.key != "img_url"
+                            && $0.key != "collection" && $0.key != "collection_name"
                     },
                     walletAddress: walletAddress
                 )

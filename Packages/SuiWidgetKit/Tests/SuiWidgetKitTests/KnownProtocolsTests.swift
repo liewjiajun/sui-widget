@@ -53,6 +53,26 @@ struct KnownProtocolsTests {
         #expect(result?.category == .lending)
     }
 
+    @Test func kai_ytokens_are_lending_positions_via_underlying() {
+        // ySUI → priced via SUI, tagged Kai / Lending.
+        let ysui = KnownProtocols.enrichment(
+            forCoinType: "0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI"
+        )
+        #expect(ysui?.dappName == "Kai")
+        #expect(ysui?.symbolOverride == "ySUI")
+        #expect(ysui?.category == .lending)
+        #expect(ysui?.underlyingCanonicalCoinType == KnownProtocols.suiCanonical)
+
+        // yUSDC → priced via USDC.
+        let yusdc = KnownProtocols.enrichment(
+            forCoinType: "0x7ea359636b36e7c027c2cd71adedaf19be658e1477d9e71368a0b3824a0a27ff::yusdc::YUSDC"
+        )
+        #expect(yusdc?.dappName == "Kai")
+        #expect(yusdc?.symbolOverride == "yUSDC")
+        #expect(yusdc?.category == .lending)
+        #expect(yusdc?.underlyingCanonicalCoinType.hasSuffix("::usdc::USDC") == true)
+    }
+
     @Test func unknown_coin_type_returns_nil() {
         let random = "0xaaaa::random::TOKEN"
         #expect(KnownProtocols.enrichment(forCoinType: random) == nil)

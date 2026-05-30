@@ -61,6 +61,11 @@ extension MockURLProtocolSuite {
 
             MockURLProtocol.handler = { request in
                 let host = request.url?.host ?? ""
+                // DeFiLlama is primary; return empty so these tests deterministically
+                // exercise the CoinGecko fallback path they were written for.
+                if host.contains("llama.fi") {
+                    return (200, Data(#"{"coins":{}}"#.utf8), [:], nil)
+                }
                 if host.contains("coingecko.com") {
                     let path = request.url?.path ?? ""
                     if path.contains("/coins/list") {
@@ -85,6 +90,13 @@ extension MockURLProtocolSuite {
             return CoinGeckoClient(http: http, modelContext: context)
         }
 
+        /// DeFiLlama client bound to the mocked session, so tests never hit the
+        /// live `coins.llama.fi` (the default `DeFiLlamaClient()` uses `.shared`).
+        private func makeDeFiLlama() -> DeFiLlamaClient {
+            let http = HTTPClient(session: .mocked(), retryPolicy: .noRetry, randomJitter: { 0 })
+            return DeFiLlamaClient(http: http)
+        }
+
         @Test func refresh_builds_portfolio_with_tracked_and_untracked_tokens() async throws {
             MockURLProtocol.reset()
             try setupHandler()
@@ -93,7 +105,8 @@ extension MockURLProtocolSuite {
             let service = PortfolioService(
                 modelContext: context,
                 sui: makeRPC(),
-                coinGecko: makeCoinGecko(context)
+                coinGecko: makeCoinGecko(context),
+                deFiLlama: makeDeFiLlama()
             )
 
             let portfolio = try await service.refresh(walletId: walletId)
@@ -115,7 +128,8 @@ extension MockURLProtocolSuite {
             let service = PortfolioService(
                 modelContext: context,
                 sui: makeRPC(),
-                coinGecko: makeCoinGecko(context)
+                coinGecko: makeCoinGecko(context),
+                deFiLlama: makeDeFiLlama()
             )
 
             let portfolio = try await service.refresh(walletId: walletId)
@@ -137,7 +151,8 @@ extension MockURLProtocolSuite {
             let service = PortfolioService(
                 modelContext: context,
                 sui: makeRPC(),
-                coinGecko: makeCoinGecko(context)
+                coinGecko: makeCoinGecko(context),
+                deFiLlama: makeDeFiLlama()
             )
 
             _ = try await service.refresh(walletId: walletId)
@@ -159,22 +174,26 @@ extension MockURLProtocolSuite {
               {"coinType":"\(haSUI)","coinObjectCount":1,"totalBalance":"5000000000"}
             ]}
             """
-            // haSUI has its own CoinGecko listing (id "haedal-staked-sui") in the
-            // coin-list fixture, so PortfolioService prices it directly via that id
-            // (more accurate than the underlying-SUI fallback, which only triggers
-            // for registry tokens absent from CoinGecko). Price it at $1.45 (+2%).
-            let marketsJSON = """
-            [{"id":"haedal-staked-sui","symbol":"hasui","current_price":1.45,"price_change_percentage_24h":2.0}]
+            // DeFiLlama is primary and prices haSUI directly (keyed by coin type),
+            // returning its decimals too — so no CoinGecko or metadata RPC is hit.
+            // Price it at $1.45 (+2% 24h). 5 haSUI × $1.45 = $7.25.
+            let llamaPrices = """
+            {"coins":{"sui:\(haSUI)":{"decimals":9,"symbol":"haSUI","price":1.45,"timestamp":1,"confidence":0.99}}}
             """
-            let coinList = try FixtureLoader.data(named: "coingecko-coins-list-sui-platform.json")
+            let llamaPct = """
+            {"coins":{"sui:\(haSUI)":2.0}}
+            """
 
             MockURLProtocol.handler = { request in
                 let host = request.url?.host ?? ""
-                if host.contains("coingecko.com") {
+                if host.contains("llama.fi") {
                     let path = request.url?.path ?? ""
-                    if path.contains("/coins/list") { return (200, coinList, [:], nil) }
-                    if path.contains("/coins/markets") { return (200, Data(marketsJSON.utf8), [:], nil) }
-                    return (404, Data(), [:], nil)
+                    if path.contains("/percentage/") { return (200, Data(llamaPct.utf8), [:], nil) }
+                    return (200, Data(llamaPrices.utf8), [:], nil)
+                }
+                if host.contains("coingecko.com") {
+                    // Should not be reached — DeFiLlama already priced haSUI.
+                    return (200, Data(#"[]"#.utf8), [:], nil)
                 }
                 let body = Self.decodeBody(request)
                 if body.contains("suix_getAllBalances") {
@@ -191,7 +210,8 @@ extension MockURLProtocolSuite {
             let service = PortfolioService(
                 modelContext: context,
                 sui: makeRPC(),
-                coinGecko: makeCoinGecko(context)
+                coinGecko: makeCoinGecko(context),
+                deFiLlama: makeDeFiLlama()
             )
 
             let portfolio = try await service.refresh(walletId: walletId)
@@ -201,12 +221,68 @@ extension MockURLProtocolSuite {
             #expect(position.defiCategory == "Liquid staking")
             #expect(position.isDeFiPosition)
             #expect(position.symbol == "haSUI")
-            // … priced via SUI's market price, so its value lands in the total.
+            // … priced via DeFiLlama, so its value lands in the total.
             #expect(position.isTracked)
             #expect(position.priceUSD == Decimal(string: "1.45"))
             // 5 haSUI × $1.45 = $7.25 contributed to the portfolio total.
             #expect(position.valueUSD == Decimal(string: "7.25"))
             #expect(portfolio.totalUSD == Decimal(string: "7.25"))
+        }
+
+        @Test func kai_ytoken_priced_via_underlying_and_tagged() async throws {
+            MockURLProtocol.reset()
+            // Kai Finance ySUI (Single-Asset-Vault receipt). DeFiLlama does NOT
+            // price yTokens, so this exercises the underlying-asset fallback:
+            // ySUI → SUI price, tagged as a Kai lending position.
+            let ySUI = "0xb8dc843a816b51992ee10d2ddc6d28aab4f0a1d651cd7289a7897902eb631613::ysui::YSUI"
+            let suiCanonical = CoinTypeCanonicalizer.canonicalize("0x2::sui::SUI")
+            let balancesJSON = """
+            {"jsonrpc":"2.0","id":1,"result":[
+              {"coinType":"\(ySUI)","coinObjectCount":1,"totalBalance":"10000000000"}
+            ]}
+            """
+            // DeFiLlama prices SUI (the underlying) but returns nothing for ySUI.
+            let llamaPrices = """
+            {"coins":{"sui:\(suiCanonical)":{"decimals":9,"symbol":"SUI","price":2.0,"timestamp":1,"confidence":0.99}}}
+            """
+
+            MockURLProtocol.handler = { request in
+                let host = request.url?.host ?? ""
+                if host.contains("llama.fi") {
+                    let path = request.url?.path ?? ""
+                    if path.contains("/percentage/") { return (200, Data(#"{"coins":{}}"#.utf8), [:], nil) }
+                    return (200, Data(llamaPrices.utf8), [:], nil)
+                }
+                if host.contains("coingecko.com") { return (200, Data(#"[]"#.utf8), [:], nil) }
+                let body = Self.decodeBody(request)
+                if body.contains("suix_getAllBalances") {
+                    return (200, Data(balancesJSON.utf8), [:], nil)
+                }
+                // ySUI has 9 decimals on-chain — used because DeFiLlama priced via
+                // the underlying and didn't report ySUI's own decimals.
+                if body.contains("suix_getCoinMetadata") {
+                    return (200, Data(#"{"jsonrpc":"2.0","id":1,"result":{"decimals":9,"name":"Kai Vault SUI","symbol":"ySUI","description":"","iconUrl":null}}"#.utf8), [:], nil)
+                }
+                return (200, Data(#"{"jsonrpc":"2.0","id":1,"result":null}"#.utf8), [:], nil)
+            }
+
+            let context = try makeContext()
+            let walletId = try seedWallet(context)
+            let service = PortfolioService(
+                modelContext: context,
+                sui: makeRPC(),
+                coinGecko: makeCoinGecko(context),
+                deFiLlama: makeDeFiLlama()
+            )
+
+            let portfolio = try await service.refresh(walletId: walletId)
+            let position = try #require(portfolio.tokens.first(where: { $0.dappName == "Kai" }))
+            #expect(position.defiCategory == "Lending")
+            #expect(position.symbol == "ySUI")
+            #expect(position.isTracked)
+            // 10 ySUI × $2.00 (underlying SUI) = $20.00.
+            #expect(position.priceUSD == Decimal(string: "2.0"))
+            #expect(position.valueUSD == Decimal(string: "20.0"))
         }
     }
 }
