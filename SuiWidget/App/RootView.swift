@@ -8,7 +8,6 @@ struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var deepLinkDestination: DeepLinkDestination?
     @State private var selectedTab: AppTab = .portfolio
-    @State private var showPetComingSoon: Bool = false
     @State private var portfolioPath: [PortfolioRoute] = []
 
     enum AppTab: Hashable {
@@ -52,12 +51,7 @@ struct RootView: View {
                 selectedTab = .nfts
             case .news:
                 selectedTab = .news
-            case .petHatch:
-                showPetComingSoon = true
             }
-        }
-        .sheet(isPresented: $showPetComingSoon) {
-            PetComingSoonView()
         }
     }
 

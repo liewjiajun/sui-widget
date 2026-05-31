@@ -18,7 +18,6 @@ public struct MediumWidgetView: View {
                             .lineLimit(1)
                     }
                     Spacer()
-                    PetSlotView()
                 }
                 PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, currency: entry.configuration.currency, size: 26)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0)

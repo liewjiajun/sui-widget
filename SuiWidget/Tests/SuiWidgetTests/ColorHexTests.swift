@@ -43,9 +43,11 @@ struct DeepLinkRouterTests {
         #expect(DeepLinkRouter.destination(from: url) == .wallet(uuid))
     }
 
-    @Test func parses_pet_hatch_url() {
+    /// The V2 pet teaser was removed from V1 — the `pet/hatch` deep link must no
+    /// longer resolve (the egg slot and Coming-Soon screen are gone).
+    @Test func pet_hatch_url_no_longer_routes() {
         let url = URL(string: "suiwidget://pet/hatch")!
-        #expect(DeepLinkRouter.destination(from: url) == .petHatch)
+        #expect(DeepLinkRouter.destination(from: url) == nil)
     }
 
     @Test func parses_news_url() {

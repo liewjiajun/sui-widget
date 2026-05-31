@@ -17,7 +17,6 @@ public struct LargeWidgetView: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                PetSlotView()
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, currency: entry.configuration.currency, size: 40)
