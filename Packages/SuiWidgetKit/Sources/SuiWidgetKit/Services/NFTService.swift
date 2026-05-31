@@ -42,6 +42,12 @@ public struct NFTService {
 
         var allObjects: [SuiOwnedObject] = []
         var cursor: String? = nil
+        // Safety cap: 20 pages × 50 = 1000 objects. A spec-compliant node stops
+        // via hasNextPage; the cap only guards against a misbehaving node that
+        // keeps returning hasNextPage=true with a non-advancing cursor (which
+        // would otherwise spin forever).
+        var pagesFetched = 0
+        let maxPages = 20
         repeat {
             let page = try await sui.getOwnedObjects(owner: owner, limit: 50, cursor: cursor)
             for wrapper in page.data {
@@ -49,7 +55,8 @@ public struct NFTService {
                     allObjects.append(obj)
                 }
             }
-            cursor = page.hasNextPage ? page.nextCursor : nil
+            pagesFetched += 1
+            cursor = (page.hasNextPage && pagesFetched < maxPages) ? page.nextCursor : nil
         } while cursor != nil
 
         // Filter to display-bearing objects (NFTs typically carry display
@@ -78,7 +85,14 @@ public struct NFTService {
                 ?? displayData["image"]
                 ?? displayData["img_url"]
                 ?? ""
-            let collection = obj.type
+            // Human-readable collection name: prefer the Display `collection`
+            // field; otherwise humanise the on-chain struct type. Previously we
+            // stored the raw `0x<package>::module::Struct` type, so the gallery
+            // grouped NFTs under unreadable package IDs.
+            let collection = CollectionNamer.collectionName(
+                displayCollection: displayData["collection"] ?? displayData["collection_name"],
+                type: obj.type
+            )
 
             if let row = existingByObjectId[obj.objectId] {
                 row.name = name
@@ -98,6 +112,7 @@ public struct NFTService {
                         $0.key != "name" && $0.key != "title"
                             && $0.key != "image_url" && $0.key != "imageUrl"
                             && $0.key != "image" && $0.key != "img_url"
+                            && $0.key != "collection" && $0.key != "collection_name"
                     },
                     walletAddress: walletAddress
                 )
@@ -146,9 +161,12 @@ public struct NFTService {
                             objectId: objectId,
                             remoteURL: imageURL
                         )
+                        // Persist only the filename — absolute App Group paths
+                        // aren't stable across launches; ThumbnailLocator
+                        // re-resolves against the current container at read time.
                         try? await writeActor.writeThumbnailPath(
                             objectId: objectId,
-                            path: result.widgetURL.path
+                            path: result.widgetURL.lastPathComponent
                         )
                     } catch {
                         // Best-effort — the next NFT refresh will reconcile.

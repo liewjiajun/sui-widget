@@ -17,10 +17,9 @@ public struct LargeWidgetView: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                PetSlotView()
             }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 40)
+                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, currency: entry.configuration.currency, size: 40)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0, size: 12)
                 Spacer()
             }
@@ -32,9 +31,11 @@ public struct LargeWidgetView: View {
             Divider()
             tokensRow
             Spacer().frame(height: 4)
-            Text("NFTs · \(entry.topNFTs.count)").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
-            nftRow
-            Spacer().frame(height: 4)
+            if !entry.topNFTs.isEmpty {
+                Text("NFTs · \(entry.topNFTs.count)").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
+                nftRow
+                Spacer().frame(height: 4)
+            }
             if let headline = entry.topNews.first {
                 Text("NEWS").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
                 HStack(alignment: .top, spacing: 6) {
@@ -43,7 +44,7 @@ public struct LargeWidgetView: View {
                         Text(headline.title)
                             .font(SuiTypography.body(11, weight: .semibold))
                             .lineLimit(2)
-                        Text(headline.source.rawValue.uppercased())
+                        Text(headline.source.displayLabel.uppercased())
                             .font(SuiTypography.mono(7, weight: .bold))
                             .foregroundStyle(.secondary)
                     }
@@ -75,7 +76,7 @@ public struct LargeWidgetView: View {
                         }
                     }
                     Spacer()
-                    Text(usd(h.usdValue))
+                    Text(WidgetCurrencyFormatter.compact(usdValue: h.usdValue, currency: entry.configuration.currency))
                         .font(SuiTypography.mono(10))
                         .contentTransition(.numericText())
                     DeltaGlyph(percent: h.change24h, size: 9)
@@ -99,15 +100,9 @@ public struct LargeWidgetView: View {
 
     private var refreshLabel: String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
+        f.timeStyle = .short
+        f.dateStyle = .none
+        f.locale = .current
         return "↻ \(f.string(from: entry.date))"
-    }
-
-    private func usd(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 0
-        return f.string(from: value as NSDecimalNumber) ?? "$0"
     }
 }

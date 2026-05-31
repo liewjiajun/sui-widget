@@ -20,7 +20,7 @@ struct StakeRowView: View {
                 Text("\(suiPrincipalLabel) SUI")
                     .font(SuiTypography.display(13))
                 if position.estimatedReward > 0 {
-                    Text("+\(suiRewardLabel) reward")
+                    Text("~+\(suiRewardLabel) est.")
                         .font(SuiTypography.mono(9))
                         .foregroundStyle(SuiColor.up)
                 }

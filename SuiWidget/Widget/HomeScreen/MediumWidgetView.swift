@@ -18,9 +18,8 @@ public struct MediumWidgetView: View {
                             .lineLimit(1)
                     }
                     Spacer()
-                    PetSlotView()
                 }
-                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, size: 26)
+                PortfolioValueText(value: entry.portfolio?.totalUSD ?? 0, currency: entry.configuration.currency, size: 26)
                 DeltaGlyph(percent: entry.portfolio?.change24hPercent ?? 0)
                 PixelSparkline(
                     points: entry.sparklinePoints.map { ($0 as NSDecimalNumber).doubleValue },
@@ -58,7 +57,7 @@ public struct MediumWidgetView: View {
         HStack(spacing: 4) {
             Text(holding.symbol).font(SuiTypography.body(10, weight: .bold))
             Spacer()
-            Text(usd(holding.usdValue))
+            Text(WidgetCurrencyFormatter.compact(usdValue: holding.usdValue, currency: entry.configuration.currency))
                 .font(SuiTypography.mono(9))
                 .contentTransition(.numericText())
             DeltaGlyph(percent: holding.change24h, size: 9)
@@ -67,15 +66,9 @@ public struct MediumWidgetView: View {
 
     private var refreshLabel: String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
+        f.timeStyle = .short
+        f.dateStyle = .none
+        f.locale = .current
         return "↻ \(f.string(from: entry.date))"
-    }
-
-    private func usd(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 0
-        return f.string(from: value as NSDecimalNumber) ?? "$0"
     }
 }

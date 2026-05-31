@@ -1,20 +1,18 @@
 import SwiftUI
 import SuiWidgetKit
-import UserNotifications
 
-/// Paged container that hosts the 3 onboarding screens: Welcome → Notifications → Add Wallet.
+/// Paged container that hosts the 2 onboarding screens: Welcome → Add Wallet.
 /// Per V1 Task 10 / design Flow V2 "illustrative hero".
 struct OnboardingCoordinatorView: View {
     let onComplete: () -> Void
     @State private var page: Int = 0
-    private let totalPages: Int = 3
+    private let totalPages: Int = 2
 
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $page) {
                 OnboardingWelcomeView(onNext: advance).tag(0)
-                OnboardingNotificationsView(onNext: advance, onSkip: advance).tag(1)
-                OnboardingAddWalletView(onComplete: onComplete, onSkip: onComplete).tag(2)
+                OnboardingAddWalletView(onComplete: onComplete, onSkip: onComplete).tag(1)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .indexViewStyle(.page(backgroundDisplayMode: .always))

@@ -55,6 +55,11 @@ public final class CachedTokenHolding {
     /// we used to value this wrapped position. Persisted for debugging /
     /// future precise-ratio pricing.
     public var underlyingCoinType: String?
+    /// DeFi category raw value ("Liquid staking" / "Lending") when this holding
+    /// is a recognised protocol position; nil for plain spendable balances. The
+    /// "Earning" section groups rows by `dappName` within each category so the
+    /// user can see where their tokens are deployed.
+    public var defiCategory: String?
 
     public init(
         id: UUID = UUID(),
@@ -68,7 +73,8 @@ public final class CachedTokenHolding {
         iconURL: String? = nil,
         isTracked: Bool,
         dappName: String? = nil,
-        underlyingCoinType: String? = nil
+        underlyingCoinType: String? = nil,
+        defiCategory: String? = nil
     ) {
         self.id = id
         self.coinType = coinType
@@ -82,5 +88,14 @@ public final class CachedTokenHolding {
         self.isTracked = isTracked
         self.dappName = dappName
         self.underlyingCoinType = underlyingCoinType
+        self.defiCategory = defiCategory
     }
+
+    /// True when this holding is a recognised DeFi position (staking / lending /
+    /// LST) — i.e. the user's tokens are deployed in a protocol rather than
+    /// sitting spendable in the wallet.
+    public var isDeFiPosition: Bool { dappName != nil }
+
+    /// Current USD value of the position (price × balance), 0 when unpriced.
+    public var valueUSD: Decimal { (priceUSD ?? 0) * balance }
 }

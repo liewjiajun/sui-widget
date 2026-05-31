@@ -12,7 +12,7 @@ public struct RectangularWidgetView: View {
         VStack(alignment: .leading, spacing: 1) {
             Text("PORTFOLIO").font(SuiTypography.mono(8, weight: .bold))
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(formatted(value))
+                Text(WidgetCurrencyFormatter.compact(usdValue: value, currency: entry.configuration.currency))
                     .font(SuiTypography.pixelDisplay(22))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -24,7 +24,7 @@ public struct RectangularWidgetView: View {
                     .font(SuiTypography.pixelDisplay(14))
                     .contentTransition(.numericText())
             }
-            Text("↻ \(refreshLabel(entry.date))")
+            Text(refreshLabel(entry.date))
                 .font(SuiTypography.mono(8))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -36,11 +36,7 @@ public struct RectangularWidgetView: View {
     }
 
     private func formatted(_ value: Decimal) -> String {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.currencyCode = "USD"
-        f.maximumFractionDigits = 0
-        return f.string(from: value as NSDecimalNumber) ?? "$0"
+        WidgetCurrencyFormatter.compact(usdValue: value, currency: entry.configuration.currency)
     }
 
     private func deltaGlyph(_ pct: Double) -> String {
@@ -51,7 +47,9 @@ public struct RectangularWidgetView: View {
 
     private func refreshLabel(_ date: Date) -> String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        f.timeStyle = .short
+        f.dateStyle = .none
+        f.locale = .current
+        return "↻ \(f.string(from: date))"
     }
 }

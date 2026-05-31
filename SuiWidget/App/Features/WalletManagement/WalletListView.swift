@@ -7,6 +7,7 @@ struct WalletListView: View {
     @State private var viewModel: WalletListViewModel?
     @State private var showingAdd = false
     @State private var editTarget: Wallet?
+    @State private var removeTarget: Wallet?
 
     var body: some View {
         Group {
@@ -61,7 +62,7 @@ struct WalletListView: View {
                             .buttonStyle(.plain)
                             .swipeActions(allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    viewModel.remove(wallet)
+                                    removeTarget = wallet
                                 } label: {
                                     Label("Remove", systemImage: "trash")
                                 }
@@ -79,6 +80,22 @@ struct WalletListView: View {
             .listStyle(.insetGrouped)
             .refreshable { viewModel.load() }
             .onAppear { viewModel.load() }
+            .confirmationDialog(
+                "Remove this wallet?",
+                isPresented: Binding(
+                    get: { removeTarget != nil },
+                    set: { if !$0 { removeTarget = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Remove", role: .destructive) {
+                    if let wallet = removeTarget { viewModel.remove(wallet) }
+                    removeTarget = nil
+                }
+                Button("Cancel", role: .cancel) { removeTarget = nil }
+            } message: {
+                Text("Removing the primary wallet promotes another wallet to primary.")
+            }
         }
     }
 

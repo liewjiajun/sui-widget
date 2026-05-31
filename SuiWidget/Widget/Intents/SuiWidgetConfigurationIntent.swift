@@ -82,6 +82,10 @@ public enum CurrencyOption: String, AppEnum, CaseIterable {
         case .cny: return "¥"
         }
     }
+
+    /// ISO 4217 code, used both for `NumberFormatter.currencyCode` and to look up
+    /// the USD→currency rate in `FXRateStore`.
+    public var code: String { rawValue.uppercased() }
 }
 
 public enum WidgetVariantOption: String, AppEnum {

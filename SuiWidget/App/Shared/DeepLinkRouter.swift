@@ -6,7 +6,6 @@ public enum DeepLinkDestination: Equatable {
     case stakeList
     case nft(objectId: String)
     case news(itemId: String)
-    case petHatch
 }
 
 public enum DeepLinkRouter {
@@ -27,9 +26,6 @@ public enum DeepLinkRouter {
         case "news":
             guard let id = pathComponents.first else { return nil }
             return .news(itemId: id)
-        case "pet":
-            guard pathComponents.first == "hatch" else { return nil }
-            return .petHatch
         default:
             return nil
         }

@@ -12,9 +12,22 @@ final class NewsViewModel {
     private let modelContext: ModelContext
     private let newsService: NewsService
 
+    // Local-only read tracking (in-app), persisted to UserDefaults.
+    private static let readKey = "readNewsItemIDs"
+    private var readIDs: Set<String>
+
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         self.newsService = NewsService(modelContext: modelContext, rss: RSSClient())
+        let stored = UserDefaults.standard.stringArray(forKey: Self.readKey) ?? []
+        self.readIDs = Set(stored)
+    }
+
+    func isRead(_ id: String) -> Bool { readIDs.contains(id) }
+
+    func markRead(_ id: String) {
+        guard readIDs.insert(id).inserted else { return }
+        UserDefaults.standard.set(Array(readIDs), forKey: Self.readKey)
     }
 
     func load() {

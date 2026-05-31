@@ -72,6 +72,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // Always reschedule next instance first so the chain continues.
         scheduleNextRefresh()
 
+        // Install the expiration handler BEFORE starting async work. Assigning it
+        // after `Task {…}` leaves a window where the system could suspend the task
+        // with no handler installed; we capture the operation lazily so the
+        // handler can cancel it.
+        let operationBox = TaskBox()
+        task.expirationHandler = { operationBox.task?.cancel() }
+
         let operation = Task<Void, Never> {
             do {
                 let container = try SwiftDataStack.makeContainer()
@@ -119,18 +126,21 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
                 // widget's news rows; without this the widget showed nothing.
                 _ = try? await newsService.refresh(force: false)
                 await priceHistory.refreshAll()
+                await FXRateStore.shared.refreshIfStale(coinGecko: coinGecko)
                 WidgetCenter.shared.reloadAllTimelines()
             } catch {
                 // best-effort; nothing more to do
             }
             task.setTaskCompleted(success: true)
         }
-
-        task.expirationHandler = { operation.cancel() }
+        operationBox.task = operation
     }
 
     private func handleCleanupTask(task: BGProcessingTask) {
         scheduleNextCleanup()
+
+        let operationBox = TaskBox()
+        task.expirationHandler = { operationBox.task?.cancel() }
 
         let operation = Task<Void, Never> {
             // Evict orphaned NFT thumbnails — files in App Group/Thumbnails not referenced
@@ -138,39 +148,47 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             do {
                 let container = try SwiftDataStack.makeContainer()
                 let context = ModelContext(container)
+                // thumbnailFilePath now stores bare filenames (see
+                // ThumbnailLocator); compare by lastPathComponent so the
+                // orphan sweep matches stored references regardless of whether
+                // an old row holds a legacy absolute path.
                 let referenced: Set<String> = Set(
                     ((try? context.fetch(FetchDescriptor<CachedNFTItem>())) ?? [])
                         .compactMap(\.thumbnailFilePath)
+                        .map { ($0 as NSString).lastPathComponent }
                 )
 
-                let groupURL = FileManager.default.containerURL(
-                    forSecurityApplicationGroupIdentifier: AppGroupStore.groupIdentifier
-                )?.appendingPathComponent("Thumbnails", isDirectory: true)
+                let groupURL = ThumbnailLocator.thumbnailsDirectory()
                 if let groupURL,
                    let files = try? FileManager.default.contentsOfDirectory(at: groupURL, includingPropertiesForKeys: nil) {
-                    for file in files where !referenced.contains(file.path) {
+                    for file in files where !referenced.contains(file.lastPathComponent) {
                         try? FileManager.default.removeItem(at: file)
                     }
                 }
             } catch {}
             task.setTaskCompleted(success: true)
         }
-
-        task.expirationHandler = { operation.cancel() }
+        operationBox.task = operation
     }
 
     private func handleCoinListTask(task: BGAppRefreshTask) {
         scheduleNextCoinList()
+
+        let operationBox = TaskBox()
+        task.expirationHandler = { operationBox.task?.cancel() }
+
         let operation = Task<Void, Never> {
             do {
                 let container = try SwiftDataStack.makeContainer()
                 let context = ModelContext(container)
                 let coinGecko = CoinGeckoClient(modelContext: context)
                 _ = try? await coinGecko.refreshCoinList(force: true)
+                // FX rates share the daily coin-list cadence.
+                await FXRateStore.shared.refreshIfStale(coinGecko: coinGecko)
             } catch {}
             task.setTaskCompleted(success: true)
         }
-        task.expirationHandler = { operation.cancel() }
+        operationBox.task = operation
     }
 
     private func scheduleNextRefresh() {
@@ -192,4 +210,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         request.earliestBeginDate = Date(timeIntervalSinceNow: 24 * 60 * 60)
         try? BGTaskScheduler.shared.submit(request)
     }
+}
+
+/// Lets a `BGTask.expirationHandler` (installed before the work `Task` is
+/// created) reach back and cancel that `Task` once it exists, closing the race
+/// where the system could suspend the task before a handler was installed.
+private final class TaskBox: @unchecked Sendable {
+    var task: Task<Void, Never>?
 }
