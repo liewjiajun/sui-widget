@@ -19,6 +19,15 @@ final class PortfolioViewModel {
     /// Changes to a fresh UUID after every successful refresh so views can observe
     /// it (via `.onChange`) and pulse a small visual indicator. Nil at app start.
     var refreshSuccessPulse: UUID?
+    /// Active sort order for the token list, picked via the TOKENS header menu.
+    /// Applies to both single-wallet and aggregate token lists.
+    var tokenSort: TokenSort = .value
+
+    /// Token-list sort modes. `.value` = holding USD value, `.change` = 24h
+    /// price change, `.name` = symbol alphabetical.
+    enum TokenSort: String, CaseIterable {
+        case value, change, name
+    }
 
     struct StakeSummary: Equatable {
         var totalUSD: Decimal

@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import Observation
 import SwiftUI
+import WidgetKit
 import SuiWidgetKit
 
 enum AppTheme: String, CaseIterable, Identifiable {
@@ -91,6 +92,10 @@ final class SettingsViewModel {
         if previousMinutes != settings.refreshFrequencyMinutes {
             NotificationCenter.default.post(name: .suiWidgetRefreshFrequencyChanged, object: nil)
         }
+
+        // Currency/theme/etc. changed in the shared AppSettings row — force the
+        // Home/Lock widgets to re-render now instead of waiting for an unrelated refresh.
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func computeCacheSize() {

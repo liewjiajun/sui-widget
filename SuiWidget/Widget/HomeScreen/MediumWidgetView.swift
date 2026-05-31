@@ -66,7 +66,9 @@ public struct MediumWidgetView: View {
 
     private var refreshLabel: String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
+        f.timeStyle = .short
+        f.dateStyle = .none
+        f.locale = .current
         return "↻ \(f.string(from: entry.date))"
     }
 }

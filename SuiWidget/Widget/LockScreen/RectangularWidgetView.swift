@@ -24,7 +24,7 @@ public struct RectangularWidgetView: View {
                     .font(SuiTypography.pixelDisplay(14))
                     .contentTransition(.numericText())
             }
-            Text("↻ \(refreshLabel(entry.date))")
+            Text(refreshLabel(entry.date))
                 .font(SuiTypography.mono(8))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -47,7 +47,9 @@ public struct RectangularWidgetView: View {
 
     private func refreshLabel(_ date: Date) -> String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        f.timeStyle = .short
+        f.dateStyle = .none
+        f.locale = .current
+        return "↻ \(f.string(from: date))"
     }
 }

@@ -31,9 +31,11 @@ public struct LargeWidgetView: View {
             Divider()
             tokensRow
             Spacer().frame(height: 4)
-            Text("NFTs · \(entry.topNFTs.count)").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
-            nftRow
-            Spacer().frame(height: 4)
+            if !entry.topNFTs.isEmpty {
+                Text("NFTs · \(entry.topNFTs.count)").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
+                nftRow
+                Spacer().frame(height: 4)
+            }
             if let headline = entry.topNews.first {
                 Text("NEWS").font(SuiTypography.mono(8, weight: .bold)).foregroundStyle(.secondary)
                 HStack(alignment: .top, spacing: 6) {
@@ -98,7 +100,9 @@ public struct LargeWidgetView: View {
 
     private var refreshLabel: String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
+        f.timeStyle = .short
+        f.dateStyle = .none
+        f.locale = .current
         return "↻ \(f.string(from: entry.date))"
     }
 }

@@ -6,6 +6,7 @@ struct WalletEditView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: WalletEditViewModel?
+    @State private var showRemoveConfirm = false
 
     var body: some View {
         Group {
@@ -68,9 +69,19 @@ struct WalletEditView: View {
             }
 
             Section {
-                Button("Remove wallet", role: .destructive) { viewModel.remove() }
+                Button("Remove wallet", role: .destructive) { showRemoveConfirm = true }
                     .frame(maxWidth: .infinity)
             }
+        }
+        .confirmationDialog(
+            "Remove this wallet?",
+            isPresented: $showRemoveConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Remove", role: .destructive) { viewModel.remove() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Removing the primary wallet promotes another wallet to primary.")
         }
     }
 }

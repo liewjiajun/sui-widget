@@ -4,6 +4,7 @@ import SuiWidgetKit
 struct NewsRowView: View {
     let item: CachedNewsItem
     let isFeatured: Bool
+    var isRead: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: SuiSpacing.s2) {
@@ -19,10 +20,20 @@ struct NewsRowView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Text(item.title)
-                .font(SuiTypography.body(isFeatured ? 16 : 13, weight: .semibold))
-                .lineLimit(isFeatured ? 3 : 2)
-                .multilineTextAlignment(.leading)
+            HStack(alignment: .top, spacing: SuiSpacing.s2) {
+                if !isRead {
+                    Circle()
+                        .fill(SuiColor.suiBlue)
+                        .frame(width: 7, height: 7)
+                        .padding(.top, 5)
+                        .accessibilityLabel("Unread")
+                }
+                Text(item.title)
+                    .font(SuiTypography.body(isFeatured ? 16 : 13, weight: .semibold))
+                    .lineLimit(isFeatured ? 3 : 2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if let summary = item.summary, isFeatured {
                 Text(summary.replacingOccurrences(of: "\n", with: " "))
                     .font(SuiTypography.body(12))
@@ -38,6 +49,7 @@ struct NewsRowView: View {
                 .foregroundStyle(.secondary)
             }
         }
+        .opacity(isRead ? 0.6 : 1)
         .padding(isFeatured ? SuiSpacing.s4 : SuiSpacing.s3)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(

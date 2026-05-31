@@ -31,8 +31,28 @@ struct TokenDetailView: View {
                 chartCard(viewModel: viewModel)
                 statsCard(viewModel: viewModel)
                 metadataCard
+                suiscanLink
             }
             .padding()
+        }
+    }
+
+    @ViewBuilder
+    private var suiscanLink: some View {
+        if let url = URL(string: "https://suiscan.xyz/mainnet/coin/\(holding.coinType)") {
+            Link(destination: url) {
+                HStack {
+                    Text("View on Suiscan").font(SuiTypography.body(14, weight: .semibold))
+                    Spacer()
+                    Image(systemName: "arrow.up.right.square")
+                }
+                .padding(SuiSpacing.s3)
+                .background(
+                    RoundedRectangle(cornerRadius: SuiSpacing.cardRadius)
+                        .fill(SuiColor.suiBlue.opacity(0.10))
+                )
+                .foregroundStyle(SuiColor.suiBlue)
+            }
         }
     }
 

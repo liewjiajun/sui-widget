@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import SuiWidgetKit
 
 struct WalletRowView: View {
@@ -29,6 +30,13 @@ struct WalletRowView: View {
             }
         }
         .padding(.vertical, SuiSpacing.s2)
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = wallet.address
+            } label: {
+                Label("Copy address", systemImage: "doc.on.doc")
+            }
+        }
     }
 
     private var avatar: some View {

@@ -44,8 +44,12 @@ struct NewsView: View {
                     .padding()
                 } else {
                     if let featured = viewModel.featured {
-                        Button(action: { browserURL = NewsBrowserURL(url: URL(string: featured.url)!) }) {
-                            NewsRowView(item: featured, isFeatured: true)
+                        Button(action: {
+                            guard let u = URL(string: featured.url) else { return }
+                            viewModel.markRead(featured.id)
+                            browserURL = NewsBrowserURL(url: u)
+                        }) {
+                            NewsRowView(item: featured, isFeatured: true, isRead: viewModel.isRead(featured.id))
                         }
                         .buttonStyle(.plain)
                     }
@@ -56,8 +60,12 @@ struct NewsView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, SuiSpacing.s3)
                         ForEach(viewModel.rest, id: \.id) { item in
-                            Button(action: { browserURL = NewsBrowserURL(url: URL(string: item.url)!) }) {
-                                NewsRowView(item: item, isFeatured: false)
+                            Button(action: {
+                                guard let u = URL(string: item.url) else { return }
+                                viewModel.markRead(item.id)
+                                browserURL = NewsBrowserURL(url: u)
+                            }) {
+                                NewsRowView(item: item, isFeatured: false, isRead: viewModel.isRead(item.id))
                             }
                             .buttonStyle(.plain)
                         }

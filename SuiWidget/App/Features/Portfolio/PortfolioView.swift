@@ -114,7 +114,7 @@ struct PortfolioView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        tokenSection(portfolio: portfolio)
+                        tokenSection(portfolio: portfolio, viewModel: viewModel)
                         EarningSectionView(
                             positions: portfolio.tokens.filter(\.isDeFiPosition),
                             colorByCoinType: colorByCoinType(for: portfolio.tokens)
@@ -148,13 +148,14 @@ struct PortfolioView: View {
                 HStack(alignment: .top, spacing: SuiSpacing.s4) {
                     PortfolioDonutView(slices: slices, totalUSD: aggregate.totalUSD)
                     VStack(alignment: .leading, spacing: SuiSpacing.s2) {
-                        ForEach(slices.prefix(4)) { slice in
+                        ForEach(slices) { slice in
                             HStack(spacing: SuiSpacing.s2) {
                                 Circle().fill(slice.color).frame(width: 8, height: 8)
                                 Text(slice.label).font(SuiTypography.body(12, weight: .semibold))
                                 Spacer()
                                 Text(percentLabel(slice.value, total: aggregate.totalUSD))
                                     .font(SuiTypography.mono(11))
+                                    .monospacedDigit()
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -166,11 +167,13 @@ struct PortfolioView: View {
                         .foregroundStyle(isUp ? SuiColor.up : SuiColor.down)
                     Text(String(format: "%.2f%%", abs(aggregate.change24hPercent)))
                         .font(SuiTypography.display(14))
+                        .monospacedDigit()
                         .foregroundStyle(isUp ? SuiColor.up : SuiColor.down)
                     Text("·")
                         .foregroundStyle(.secondary)
                     Text(usdDelta(aggregate.change24hUSD))
                         .font(SuiTypography.mono(12, weight: .medium))
+                        .monospacedDigit()
                         .foregroundStyle(isUp ? SuiColor.up : SuiColor.down)
                     Spacer()
                     Text("24h").font(SuiTypography.mono(10)).foregroundStyle(.secondary)
@@ -192,7 +195,8 @@ struct PortfolioView: View {
 
             // Spendable tokens, then the Earning section for deployed positions.
             tokenList(tokens: aggregate.tokens.filter { !$0.isDeFiPosition },
-                      colorSource: aggregate.tokens)
+                      colorSource: aggregate.tokens,
+                      viewModel: viewModel)
             EarningSectionView(
                 positions: aggregate.tokens.filter(\.isDeFiPosition),
                 colorByCoinType: colorByCoinType(for: aggregate.tokens)
@@ -208,13 +212,14 @@ struct PortfolioView: View {
             HStack(alignment: .top, spacing: SuiSpacing.s4) {
                 PortfolioDonutView(slices: slices, totalUSD: portfolio.totalUSD)
                 VStack(alignment: .leading, spacing: SuiSpacing.s2) {
-                    ForEach(slices.prefix(4)) { slice in
+                    ForEach(slices) { slice in
                         HStack(spacing: SuiSpacing.s2) {
                             Circle().fill(slice.color).frame(width: 8, height: 8)
                             Text(slice.label).font(SuiTypography.body(12, weight: .semibold))
                             Spacer()
                             Text(percentLabel(slice.value, total: portfolio.totalUSD))
                                 .font(SuiTypography.mono(11))
+                                .monospacedDigit()
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -227,11 +232,13 @@ struct PortfolioView: View {
                     .foregroundStyle(isUp ? SuiColor.up : SuiColor.down)
                 Text(String(format: "%.2f%%", abs(portfolio.change24hPercent)))
                     .font(SuiTypography.display(14))
+                    .monospacedDigit()
                     .foregroundStyle(isUp ? SuiColor.up : SuiColor.down)
                 Text("·")
                     .foregroundStyle(.secondary)
                 Text(usdDelta(portfolio.change24hUSD))
                     .font(SuiTypography.mono(12, weight: .medium))
+                    .monospacedDigit()
                     .foregroundStyle(isUp ? SuiColor.up : SuiColor.down)
                 Spacer()
                 Text("24h").font(SuiTypography.mono(10)).foregroundStyle(.secondary)
@@ -258,24 +265,33 @@ struct PortfolioView: View {
     }
 
     @ViewBuilder
-    private func tokenSection(portfolio: CachedPortfolio) -> some View {
+    private func tokenSection(portfolio: CachedPortfolio, viewModel: PortfolioViewModel) -> some View {
         // Spendable wallet balances only — DeFi positions move to the Earning
         // section so the value isn't listed twice.
         tokenList(tokens: portfolio.tokens.filter { !$0.isDeFiPosition },
-                  colorSource: portfolio.tokens)
+                  colorSource: portfolio.tokens,
+                  viewModel: viewModel)
     }
 
     /// Shared token-list card used by both single-wallet and aggregate modes.
     @ViewBuilder
-    private func tokenList(tokens: [CachedTokenHolding], colorSource: [CachedTokenHolding]) -> some View {
+    private func tokenList(
+        tokens: [CachedTokenHolding],
+        colorSource: [CachedTokenHolding],
+        viewModel: PortfolioViewModel
+    ) -> some View {
         if !tokens.isEmpty {
             VStack(alignment: .leading, spacing: SuiSpacing.s2) {
-                Text("TOKENS · \(tokens.count)")
-                    .font(SuiTypography.mono(10, weight: .bold))
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("TOKENS · \(tokens.count)")
+                        .font(SuiTypography.mono(10, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    tokenSortMenu(viewModel: viewModel)
+                }
                 VStack(spacing: 0) {
                     let colors = colorByCoinType(for: colorSource)
-                    let sortedTokens = tokens.sorted { tokenSortValue($0) > tokenSortValue($1) }
+                    let sortedTokens = sortedTokens(tokens, by: viewModel.tokenSort)
                     ForEach(sortedTokens, id: \.id) { holding in
                         NavigationLink {
                             TokenDetailView(holding: holding)
@@ -293,6 +309,56 @@ struct PortfolioView: View {
                     RoundedRectangle(cornerRadius: SuiSpacing.cardRadius, style: .continuous)
                         .fill(Color(.secondarySystemGroupedBackground))
                 )
+            }
+        }
+    }
+
+    /// Sort-order menu shown in the TOKENS header. A checkmark marks the active
+    /// mode; picking one updates `viewModel.tokenSort`, which re-sorts both the
+    /// single-wallet and aggregate token lists.
+    @ViewBuilder
+    private func tokenSortMenu(viewModel: PortfolioViewModel) -> some View {
+        Menu {
+            ForEach(PortfolioViewModel.TokenSort.allCases, id: \.self) { mode in
+                Button(action: { viewModel.tokenSort = mode }) {
+                    Label(sortLabel(mode),
+                          systemImage: viewModel.tokenSort == mode ? "checkmark" : "")
+                }
+            }
+        } label: {
+            Image(systemName: "arrow.up.arrow.down")
+                .font(SuiTypography.body(11, weight: .semibold))
+                .foregroundStyle(SuiColor.suiBlue)
+        }
+        .accessibilityLabel("Sort tokens")
+    }
+
+    private func sortLabel(_ mode: PortfolioViewModel.TokenSort) -> String {
+        switch mode {
+        case .value: return "Value"
+        case .change: return "24h change"
+        case .name: return "Name"
+        }
+    }
+
+    /// Sorts holdings by the selected mode. `.value` = USD value descending,
+    /// `.change` = 24h price change descending (nil sinks to the bottom),
+    /// `.name` = symbol ascending, case-insensitive.
+    private func sortedTokens(
+        _ tokens: [CachedTokenHolding],
+        by mode: PortfolioViewModel.TokenSort
+    ) -> [CachedTokenHolding] {
+        switch mode {
+        case .value:
+            return tokens.sorted { tokenSortValue($0) > tokenSortValue($1) }
+        case .change:
+            return tokens.sorted {
+                ($0.priceChange24h ?? -.greatestFiniteMagnitude)
+                    > ($1.priceChange24h ?? -.greatestFiniteMagnitude)
+            }
+        case .name:
+            return tokens.sorted {
+                $0.symbol.localizedCaseInsensitiveCompare($1.symbol) == .orderedAscending
             }
         }
     }

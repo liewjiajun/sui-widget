@@ -51,10 +51,12 @@ public struct ExtraLargeWidgetView: View {
                         }
                     }
                 }
-                column(title: "NFTs · \(entry.topNFTs.count)") {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
-                        ForEach(entry.topNFTs.prefix(4)) { nft in
-                            WidgetNFTThumbnail(nft: nft, size: 36, cornerRadius: 4)
+                if !entry.topNFTs.isEmpty {
+                    column(title: "NFTs · \(entry.topNFTs.count)") {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
+                            ForEach(entry.topNFTs.prefix(4)) { nft in
+                                WidgetNFTThumbnail(nft: nft, size: 36, cornerRadius: 4)
+                            }
                         }
                     }
                 }
@@ -111,7 +113,9 @@ public struct ExtraLargeWidgetView: View {
 
     private var refreshLabel: String {
         let f = DateFormatter()
-        f.dateFormat = "HH:mm"
+        f.timeStyle = .short
+        f.dateStyle = .none
+        f.locale = .current
         return "↻ \(f.string(from: entry.date))"
     }
 }

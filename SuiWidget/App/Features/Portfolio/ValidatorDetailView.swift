@@ -50,7 +50,7 @@ struct ValidatorDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(position.validatorName ?? shortAddress(position.validatorAddress))
                         .font(SuiTypography.display(20))
-                    Text(String(format: "%.2f%% effective APY", viewModel.effectiveAPYPercent))
+                    Text("~\(String(format: "%.1f", viewModel.effectiveAPYPercent))% est. APY")
                         .font(SuiTypography.mono(11, weight: .bold))
                         .foregroundStyle(SuiColor.up)
                 }
